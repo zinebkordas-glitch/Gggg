@@ -240,119 +240,36 @@ fun StashDbScreen(
         contentWindowInsets = WindowInsets.statusBars,
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         topBar = {
-            TopAppBar(
-                title = {
+            AppTophead(
+                title = if (selectedSceneIds.isNotEmpty()) "${selectedSceneIds.size} Selected" else "StashDB",
+                titleColor = if (selectedSceneIds.isNotEmpty()) accent else null,
+                searchQuery = searchQuery,
+                onSearchQueryChange = { viewModel.setStashSearchQuery(it) },
+                isSearchExpanded = isSearchExpanded,
+                onSearchExpandedChange = { viewModel.setStashSearchExpanded(it) },
+                searchPlaceholder = when (activeType) {
+                    StashSearchType.ACTORS -> "Search actor..."
+                    StashSearchType.STUDIO -> "Search studio..."
+                    StashSearchType.SEXMEX -> "Paste SexMex Scene URL or Model..."
+                },
+                searchTestTag = "stashdb_header_search_input",
+                onSearchSubmit = {
+                    focusManager.clearFocus()
+                    viewModel.performStashSearch(settings.stashDbApiKey, searchQuery)
+                },
+                navIconType = when {
+                    selectedSceneIds.isNotEmpty() -> NavIconType.CLOSE
+                    else -> NavIconType.BACK
+                },
+                onNavClick = {
                     if (selectedSceneIds.isNotEmpty()) {
-                        Text(
-                            text = "${selectedSceneIds.size} Selected",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.5).sp
-                            ),
-                            color = accent
-                        )
-                    } else if (isSearchExpanded) {
-                        LaunchedEffect(Unit) {
-                            focusRequester.requestFocus()
-                        }
-                        BasicTextField(
-                            value = searchQuery,
-                            onValueChange = { viewModel.setStashSearchQuery(it) },
-                            singleLine = true,
-                            textStyle = MaterialTheme.typography.bodyLarge.copy(
-                                color = palette.textPrimary,
-                                fontSize = 15.sp
-                            ),
-                            cursorBrush = SolidColor(accent),
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                            keyboardActions = KeyboardActions(
-                                onSearch = {
-                                    focusManager.clearFocus()
-                                    viewModel.performStashSearch(settings.stashDbApiKey, searchQuery)
-                                }
-                            ),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusRequester(focusRequester)
-                                .testTag("stashdb_header_search_input"),
-                            decorationBox = { innerTextField ->
-                                Box(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    contentAlignment = Alignment.CenterStart
-                                ) {
-                                    if (searchQuery.isEmpty()) {
-                                        Text(
-                                            text = when (activeType) {
-                                                StashSearchType.ACTORS -> "Search actor..."
-                                                StashSearchType.STUDIO -> "Search studio..."
-                                                StashSearchType.SEXMEX -> "Paste SexMex Scene URL or Model..."
-                                            },
-                                            style = MaterialTheme.typography.bodyLarge.copy(
-                                                fontSize = 15.sp,
-                                                color = palette.textMuted
-                                            ),
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
-                                        )
-                                    }
-                                    innerTextField()
-                                }
-                            }
-                        )
+                        viewModel.clearStashSelection()
                     } else {
-                        Text(
-                            text = "StashDB",
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = (-0.5).sp
-                            ),
-                            color = palette.textPrimary
-                        )
+                        viewModel.navigateTo(ScreenState.Home)
                     }
                 },
-                navigationIcon = {
-                    if (selectedSceneIds.isNotEmpty()) {
-                        IconButton(
-                            onClick = { viewModel.clearStashSelection() },
-                            modifier = Modifier.testTag("clear_selection_top_bar_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = "Clear Selection",
-                                tint = palette.textPrimary
-                            )
-                        }
-                    } else if (isSearchExpanded) {
-                        IconButton(
-                            onClick = {
-                                viewModel.setStashSearchExpanded(false)
-                                viewModel.setStashSearchQuery("")
-                            },
-                            modifier = Modifier.testTag("close_search_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Close Search",
-                                tint = palette.textPrimary
-                            )
-                        }
-                    } else {
-                        IconButton(
-                            onClick = { viewModel.navigateTo(ScreenState.Home) },
-                            modifier = Modifier.testTag("back_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                                contentDescription = "Back to Home",
-                                tint = palette.textPrimary
-                            )
-                        }
-                    }
-                },
+                navTestTag = if (selectedSceneIds.isNotEmpty()) "clear_selection_top_bar_button" else "back_button",
+                navContentDescription = if (selectedSceneIds.isNotEmpty()) "Clear Selection" else "Back to Home",
                 actions = {
                     // 1. Always accessible Save button when items are selected
                     if (selectedSceneIds.isNotEmpty()) {
@@ -368,47 +285,8 @@ fun StashDbScreen(
                         }
                     }
 
-                    // 2. Search expanded / collapsed action controls
-                    if (isSearchExpanded) {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(
-                                onClick = {
-                                    focusManager.clearFocus()
-                                    viewModel.performStashSearch(settings.stashDbApiKey, searchQuery)
-                                },
-                                modifier = Modifier.testTag("stashdb_header_search_submit")
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_app_search),
-                                    contentDescription = "Search",
-                                    tint = accent
-                                )
-                            }
-                            IconButton(
-                                onClick = { viewModel.setStashSearchQuery("") },
-                                modifier = Modifier.testTag("clear_search_text_button")
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_action_cancel),
-                                    contentDescription = "Clear text",
-                                    tint = palette.textSecondary
-                                )
-                            }
-                        } else {
-                            IconButton(
-                                onClick = {
-                                    viewModel.setStashSearchExpanded(false)
-                                },
-                                modifier = Modifier.testTag("close_search_action_button")
-                            ) {
-                                Icon(
-                                    painter = painterResource(id = R.drawable.ic_action_cancel),
-                                    contentDescription = "Close Search",
-                                    tint = palette.textPrimary
-                                )
-                            }
-                        }
-                    } else if (selectedSceneIds.isEmpty()) {
+                    // 2. Search action button when collapsed
+                    if (!isSearchExpanded && selectedSceneIds.isEmpty()) {
                         IconButton(
                             onClick = { viewModel.setStashSearchExpanded(true) },
                             modifier = Modifier.testTag("stashdb_search_action_button")
@@ -420,11 +298,7 @@ fun StashDbScreen(
                             )
                         }
                     }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = palette.surface,
-                    titleContentColor = palette.textPrimary
-                )
+                }
             )
         }
     ) { padding ->

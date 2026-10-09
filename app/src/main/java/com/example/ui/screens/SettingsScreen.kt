@@ -105,8 +105,10 @@ fun SettingsScreen(
         containerColor = palette.bg,
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
-            CenterAlignedTopAppBar(
-                title = {
+            AppTophead(
+                title = currentSection.title(),
+                centerTitle = true,
+                customTitleContent = {
                     AnimatedContent(
                         targetState = currentSection,
                         transitionSpec = settingsTransitionSpec(),
@@ -122,7 +124,7 @@ fun SettingsScreen(
                         )
                     }
                 },
-                navigationIcon = {
+                customNavigationIcon = {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
@@ -144,10 +146,7 @@ fun SettingsScreen(
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = palette.surface
-                )
+                }
             )
         }
     ) { padding ->

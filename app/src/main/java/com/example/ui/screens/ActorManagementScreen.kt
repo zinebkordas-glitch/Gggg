@@ -249,9 +249,9 @@ fun ActorManagementScreen(
                             modifier = Modifier.testTag("add_actor_button")
                         ) {
                             Icon(
-                                painter = painterResource(id = R.drawable.ic_actor_add),
+                                painter = painterResource(id = R.drawable.ic_app_add),
                                 contentDescription = "Add Actor",
-                                tint = accent
+                                tint = palette.textPrimary
                             )
                         }
                     }

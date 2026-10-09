@@ -14,7 +14,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AddBusiness
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -242,9 +241,9 @@ fun StudioManagementScreen(
                             modifier = Modifier.testTag("add_studio_button")
                         ) {
                             Icon(
-                                Icons.Default.AddBusiness,
+                                painter = painterResource(id = R.drawable.ic_app_add),
                                 contentDescription = "Add Studio",
-                                tint = accent
+                                tint = palette.textPrimary
                             )
                         }
                     }

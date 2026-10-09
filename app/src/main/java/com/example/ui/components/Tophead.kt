@@ -1,19 +1,16 @@
 package com.example.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -47,27 +44,57 @@ import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
 
 /**
- * Tophead - Unified App Top Bar Component
- * Provides clean, consistent Material 3 headers across screens with:
- * 1. Standard navigation icon with Haptic Feedback.
- * 2. Adaptive title and optional subtitle.
- * 3. Bottom divider border matching app palette.
- * 4. Flexible trailing actions slot.
+ * Types of standard navigation icons supported by AppTophead.
+ */
+enum class NavIconType {
+    NONE,
+    BACK,
+    DRAWER,
+    CLOSE
+}
+
+/**
+ * AppTophead - Unified Master Top Bar Component for all screens.
+ * 
+ * Unifies header behavior across the entire app:
+ * - Standard, Drawer, Close, or Custom navigation icons with haptic feedback.
+ * - Standard title, subtitle, or custom animated/branded title composable.
+ * - Integrated, smooth expandable search field with clear/close actions.
+ * - Center-aligned mode (e.g. for Settings).
+ * - Palette-aware container, content, and optional border colors.
+ * - Flexible trailing action buttons slot.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun Tophead(
+fun AppTophead(
     title: String,
     modifier: Modifier = Modifier,
     subtitle: String? = null,
-    onBack: (() -> Unit)? = null,
-    backContentDescription: String = "Back",
-    showBorder: Boolean = true,
+    centerTitle: Boolean = false,
+    navIconType: NavIconType = NavIconType.BACK,
+    onNavClick: (() -> Unit)? = null,
+    navContentDescription: String? = null,
+    navTestTag: String = "back_button",
+    customNavigationIcon: (@Composable () -> Unit)? = null,
+    // Search capability
+    searchQuery: String? = null,
+    onSearchQueryChange: ((String) -> Unit)? = null,
+    isSearchExpanded: Boolean = false,
+    onSearchExpandedChange: ((Boolean) -> Unit)? = null,
+    searchPlaceholder: String = "Search...",
+    searchTestTag: String = "search_input",
+    onSearchSubmit: (() -> Unit)? = null,
+    // Title styling & custom slots
     titleColor: Color? = null,
-    actions: @Composable (RowScope.() -> Unit) = {}
+    customTitleContent: (@Composable () -> Unit)? = null,
+    showBorder: Boolean = false,
+    actions: @Composable RowScope.() -> Unit = {}
 ) {
     val palette = LocalVaultPalette.current
+    val accent = LocalAccentColor.current
     val haptic = LocalHapticFeedback.current
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
     val primaryColor = titleColor ?: palette.textPrimary
 
     val borderModifier = if (showBorder) {
@@ -81,73 +108,256 @@ fun Tophead(
         }
     } else Modifier
 
-    TopAppBar(
-        modifier = modifier.then(borderModifier),
-        title = {
-            if (subtitle.isNullOrBlank()) {
+    val titleContentComposable: @Composable () -> Unit = {
+        if (isSearchExpanded && searchQuery != null && onSearchQueryChange != null) {
+            LaunchedEffect(Unit) {
+                focusRequester.requestFocus()
+            }
+            BasicTextField(
+                value = searchQuery,
+                onValueChange = onSearchQueryChange,
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyLarge.copy(
+                    color = palette.textPrimary,
+                    fontSize = 15.sp
+                ),
+                cursorBrush = SolidColor(accent),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = {
+                    focusManager.clearFocus()
+                    onSearchSubmit?.invoke()
+                }),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .focusRequester(focusRequester)
+                    .testTag(searchTestTag),
+                decorationBox = { innerTextField ->
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.CenterStart
+                    ) {
+                        if (searchQuery.isEmpty()) {
+                            Text(
+                                text = searchPlaceholder,
+                                style = MaterialTheme.typography.bodyLarge.copy(
+                                    fontSize = 15.sp,
+                                    color = palette.textSecondary
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        innerTextField()
+                    }
+                }
+            )
+        } else if (customTitleContent != null) {
+            customTitleContent()
+        } else if (subtitle.isNullOrBlank()) {
+            Text(
+                text = title,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.5).sp
+                ),
+                color = primaryColor
+            )
+        } else {
+            Column {
                 Text(
                     text = title,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.5).sp
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold
                     ),
                     color = primaryColor
                 )
-            } else {
-                Column {
-                    Text(
-                        text = title,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            fontWeight = FontWeight.Bold
-                        ),
-                        color = primaryColor
-                    )
-                    Text(
-                        text = subtitle,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = palette.textSecondary
-                    )
-                }
+                Text(
+                    text = subtitle,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = palette.textSecondary
+                )
             }
-        },
-        navigationIcon = {
-            if (onBack != null) {
+        }
+    }
+
+    val navIconComposable: @Composable () -> Unit = {
+        if (customNavigationIcon != null) {
+            customNavigationIcon()
+        } else if (isSearchExpanded && onSearchExpandedChange != null) {
+            IconButton(
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    onSearchExpandedChange(false)
+                    onSearchQueryChange?.invoke("")
+                },
+                modifier = Modifier.testTag("close_search_nav_button")
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Close Search",
+                    tint = palette.textPrimary
+                )
+            }
+        } else {
+            when (navIconType) {
+                NavIconType.BACK -> {
+                    if (onNavClick != null) {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNavClick()
+                            },
+                            modifier = Modifier.testTag(navTestTag)
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = navContentDescription ?: "Back",
+                                tint = primaryColor
+                            )
+                        }
+                    }
+                }
+                NavIconType.DRAWER -> {
+                    if (onNavClick != null) {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNavClick()
+                            },
+                            modifier = Modifier.testTag("open_drawer_button")
+                        ) {
+                            Icon(
+                                painter = painterResource(id = R.drawable.ic_app_menu),
+                                contentDescription = navContentDescription ?: "Open Drawer",
+                                tint = primaryColor
+                            )
+                        }
+                    }
+                }
+                NavIconType.CLOSE -> {
+                    if (onNavClick != null) {
+                        IconButton(
+                            onClick = {
+                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                onNavClick()
+                            },
+                            modifier = Modifier.testTag(navTestTag.ifEmpty { "close_button" })
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = navContentDescription ?: "Close",
+                                tint = primaryColor
+                            )
+                        }
+                    }
+                }
+                NavIconType.NONE -> { /* No navigation icon */ }
+            }
+        }
+    }
+
+    val actionsComposable: @Composable RowScope.() -> Unit = {
+        if (isSearchExpanded && searchQuery != null && onSearchQueryChange != null) {
+            if (searchQuery.isNotEmpty()) {
                 IconButton(
                     onClick = {
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                        onBack()
+                        onSearchQueryChange("")
                     },
-                    modifier = Modifier.testTag("back_button")
+                    modifier = Modifier.testTag("clear_search_button")
                 ) {
                     Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = backContentDescription,
-                        tint = primaryColor
+                        painter = painterResource(id = R.drawable.ic_action_cancel),
+                        contentDescription = "Clear Search",
+                        tint = palette.textSecondary
+                    )
+                }
+            } else if (onSearchExpandedChange != null) {
+                IconButton(
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        onSearchExpandedChange(false)
+                        onSearchQueryChange("")
+                    },
+                    modifier = Modifier.testTag("close_search_button")
+                ) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_action_cancel),
+                        contentDescription = "Close Search",
+                        tint = palette.textSecondary
                     )
                 }
             }
-        },
-        actions = actions,
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = palette.surface,
-            titleContentColor = palette.textPrimary,
-            navigationIconContentColor = palette.textPrimary,
-            actionIconContentColor = palette.textPrimary
+        } else {
+            actions()
+        }
+    }
+
+    if (centerTitle) {
+        CenterAlignedTopAppBar(
+            modifier = modifier.then(borderModifier),
+            title = titleContentComposable,
+            navigationIcon = navIconComposable,
+            actions = actionsComposable,
+            colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                containerColor = palette.surface,
+                titleContentColor = palette.textPrimary,
+                navigationIconContentColor = palette.textPrimary,
+                actionIconContentColor = palette.textPrimary
+            )
         )
+    } else {
+        TopAppBar(
+            modifier = modifier.then(borderModifier),
+            title = titleContentComposable,
+            navigationIcon = navIconComposable,
+            actions = actionsComposable,
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = palette.surface,
+                titleContentColor = palette.textPrimary,
+                navigationIconContentColor = palette.textPrimary,
+                actionIconContentColor = palette.textPrimary
+            )
+        )
+    }
+}
+
+/**
+ * Tophead - Convenience helper for standard screens (Add/Edit Scene, Details, etc.)
+ */
+@Composable
+fun Tophead(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    onBack: (() -> Unit)? = null,
+    backContentDescription: String = "Back",
+    showBorder: Boolean = false,
+    titleColor: Color? = null,
+    actions: @Composable (RowScope.() -> Unit) = {}
+) {
+    AppTophead(
+        title = title,
+        modifier = modifier,
+        subtitle = subtitle,
+        navIconType = if (onBack != null) NavIconType.BACK else NavIconType.NONE,
+        onNavClick = onBack,
+        navContentDescription = backContentDescription,
+        showBorder = showBorder,
+        titleColor = titleColor,
+        actions = actions
     )
 }
 
 /**
- * SearchableTophead - Expandable Search Top Bar Component
- * Reusable header with integrated search field and auto-focus for Bookmarks, StashDB, etc.
+ * SearchableTophead - Convenience helper for searchable management screens (Actors, Studios, Bookmarks)
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchableTophead(
     title: String,
@@ -159,145 +369,23 @@ fun SearchableTophead(
     placeholder: String = "Search...",
     testTag: String = "search_input",
     onBack: (() -> Unit)? = null,
-    showBorder: Boolean = true,
+    showBorder: Boolean = false,
     customTitleContent: (@Composable () -> Unit)? = null,
     actions: @Composable (RowScope.() -> Unit) = {}
 ) {
-    val palette = LocalVaultPalette.current
-    val accent = LocalAccentColor.current
-    val haptic = LocalHapticFeedback.current
-    val focusRequester = remember { FocusRequester() }
-    val focusManager = LocalFocusManager.current
-
-    val borderModifier = if (showBorder) {
-        Modifier.drawBehind {
-            drawLine(
-                color = palette.border,
-                start = Offset(0f, size.height),
-                end = Offset(size.width, size.height),
-                strokeWidth = 1.dp.toPx()
-            )
-        }
-    } else Modifier
-
-    TopAppBar(
-        modifier = modifier.then(borderModifier),
-        title = {
-            if (isSearchExpanded) {
-                LaunchedEffect(Unit) {
-                    focusRequester.requestFocus()
-                }
-                BasicTextField(
-                    value = searchQuery,
-                    onValueChange = onSearchQueryChange,
-                    singleLine = true,
-                    textStyle = MaterialTheme.typography.bodyLarge.copy(
-                        color = palette.textPrimary,
-                        fontSize = 15.sp
-                    ),
-                    cursorBrush = SolidColor(accent),
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .focusRequester(focusRequester)
-                        .testTag(testTag),
-                    decorationBox = { innerTextField ->
-                        Box(
-                            modifier = Modifier.fillMaxWidth(),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            if (searchQuery.isEmpty()) {
-                                Text(
-                                    text = placeholder,
-                                    style = MaterialTheme.typography.bodyLarge.copy(
-                                        fontSize = 15.sp,
-                                        color = palette.textSecondary
-                                    ),
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
-                            innerTextField()
-                        }
-                    }
-                )
-            } else if (customTitleContent != null) {
-                customTitleContent()
-            } else {
-                Text(
-                    text = title,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleLarge.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.5).sp
-                    ),
-                    color = palette.textPrimary
-                )
-            }
-        },
-        navigationIcon = {
-            IconButton(
-                onClick = {
-                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                    if (isSearchExpanded) {
-                        onSearchExpandedChange(false)
-                        onSearchQueryChange("")
-                    } else if (onBack != null) {
-                        onBack()
-                    }
-                },
-                modifier = Modifier.testTag("back_button")
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                    contentDescription = if (isSearchExpanded) "Close Search" else "Back",
-                    tint = palette.textPrimary
-                )
-            }
-        },
-        actions = {
-            if (isSearchExpanded) {
-                if (searchQuery.isNotEmpty()) {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onSearchQueryChange("")
-                        },
-                        modifier = Modifier.testTag("clear_search_button")
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_action_cancel),
-                            contentDescription = "Clear Search",
-                            tint = palette.textSecondary
-                        )
-                    }
-                } else {
-                    IconButton(
-                        onClick = {
-                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                            onSearchExpandedChange(false)
-                            onSearchQueryChange("")
-                        },
-                        modifier = Modifier.testTag("close_search_button")
-                    ) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_action_cancel),
-                            contentDescription = "Close Search",
-                            tint = palette.textSecondary
-                        )
-                    }
-                }
-            } else {
-                actions()
-            }
-        },
-        colors = TopAppBarDefaults.topAppBarColors(
-            containerColor = palette.surface,
-            titleContentColor = palette.textPrimary,
-            navigationIconContentColor = palette.textPrimary,
-            actionIconContentColor = palette.textPrimary
-        )
+    AppTophead(
+        title = title,
+        modifier = modifier,
+        searchQuery = searchQuery,
+        onSearchQueryChange = onSearchQueryChange,
+        isSearchExpanded = isSearchExpanded,
+        onSearchExpandedChange = onSearchExpandedChange,
+        searchPlaceholder = placeholder,
+        searchTestTag = testTag,
+        navIconType = if (onBack != null) NavIconType.BACK else NavIconType.NONE,
+        onNavClick = onBack,
+        showBorder = showBorder,
+        customTitleContent = customTitleContent,
+        actions = actions
     )
 }
