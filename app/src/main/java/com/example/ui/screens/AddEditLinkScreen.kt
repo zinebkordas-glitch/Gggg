@@ -230,7 +230,7 @@ fun AddEditLinkScreen(
             Tophead(
                 title = if (existingLink != null) "Edit Scene" else "Add Scene",
                 onBack = { viewModel.navigateBack() },
-                showBorder = true,
+                showBorder = false,
                 actions = {
                     IconButton(
                         onClick = {
@@ -291,7 +291,7 @@ fun AddEditLinkScreen(
                 SceneInputField(
                     value = title,
                     onValueChange = { title = it },
-                    placeholder = "Title *",
+                    placeholder = "Title",
                     trailingIcon = {
                         PasteTrailingIcon(onPaste = { title = it })
                     },

@@ -40,9 +40,12 @@ fun PlayerControlsOverlay(
     isBuffering: Boolean = false,
     is4kOrHdr: Boolean = false,
     isVrMode: Boolean = false,
+    vrUseGyro: Boolean = true,
     vrStereoMode: Int = androidx.media3.common.C.STEREO_MODE_MONO,
     onToggleVrMode: (() -> Unit)? = null,
-    onCycleVrStereoMode: (() -> Unit)? = null,
+    onToggleVrGyro: (() -> Unit)? = null,
+    onRecenterVr: (() -> Unit)? = null,
+    onToggleVrStereoMode: (() -> Unit)? = null,
     onBack: () -> Unit,
     onRewind10s: () -> Unit,
     onTogglePlayPause: () -> Unit,
@@ -237,25 +240,98 @@ fun PlayerControlsOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(if (isFullscreen) 8.dp else 6.dp)
                     ) {
-                        // VR 360° Magic Window Button
-                        if (onToggleVrMode != null) {
+                        // VR 360° Magic Window Suite (Only enabled in Fullscreen)
+                        if (isFullscreen && onToggleVrMode != null) {
+                            if (isVrMode) {
+                                // 1. Stereo Demux Switcher (Mono 360° vs SBS Single-Eye Demux)
+                                if (onToggleVrStereoMode != null) {
+                                    val isSbs = vrStereoMode == androidx.media3.common.C.STEREO_MODE_LEFT_RIGHT
+                                    Surface(
+                                        shape = RoundedCornerShape(12.dp),
+                                        color = Color.Black.copy(alpha = 0.5f),
+                                        border = BorderStroke(1.dp, if (isSbs) Color(0xFF38BDF8) else Color.White.copy(alpha = 0.35f)),
+                                        modifier = Modifier
+                                            .height(26.dp)
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .clickable(onClick = onToggleVrStereoMode)
+                                            .testTag("vr_stereo_toggle_button")
+                                    ) {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 8.dp)
+                                        ) {
+                                            Text(
+                                                text = if (isSbs) "SBS 3D" else "360°",
+                                                color = if (isSbs) Color(0xFF38BDF8) else Color.White,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold
+                                            )
+                                        }
+                                    }
+                                }
+
+                                // 2. Gyroscope Motion Toggle (Gyro Window vs Touch Pan Only)
+                                if (onToggleVrGyro != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(
+                                                if (vrUseGyro) Color(0xFF38BDF8).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.15f),
+                                                CircleShape
+                                            )
+                                            .clip(CircleShape)
+                                            .clickable(onClick = onToggleVrGyro)
+                                            .testTag("vr_gyro_toggle_button"),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_vr_gyro),
+                                            contentDescription = if (vrUseGyro) "Gyroscope Motion Active" else "Touch Pan Only",
+                                            tint = if (vrUseGyro) Color(0xFF38BDF8) else Color.White.copy(alpha = 0.6f),
+                                            modifier = Modifier.size(19.dp)
+                                        )
+                                    }
+                                }
+
+                                // 3. Recenter View Camera Button
+                                if (onRecenterVr != null) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(32.dp)
+                                            .background(Color.White.copy(alpha = 0.15f), CircleShape)
+                                            .clip(CircleShape)
+                                            .clickable(onClick = onRecenterVr)
+                                            .testTag("vr_recenter_button"),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            painter = painterResource(id = R.drawable.ic_vr_recenter),
+                                            contentDescription = "Recenter Camera View",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(19.dp)
+                                        )
+                                    }
+                                }
+                            }
+
+                            // 4. VR Magic Window Master Button
                             Box(
                                 modifier = Modifier
-                                    .size(if (isFullscreen) 32.dp else 28.dp)
+                                    .size(32.dp)
                                     .background(
                                         if (isVrMode) Color(0xFF38BDF8).copy(alpha = 0.25f) else Color.Transparent,
                                         CircleShape
                                     )
                                     .clip(CircleShape)
                                     .clickable(onClick = onToggleVrMode)
-                                    .testTag(if (isFullscreen) "vr_player_button" else "vr_inline_button"),
+                                    .testTag("vr_player_button"),
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     painter = painterResource(id = R.drawable.ic_player_vr),
-                                    contentDescription = "VR 360° View",
+                                    contentDescription = "VR 360° Magic Window",
                                     tint = if (isVrMode) Color(0xFF38BDF8) else Color.White,
-                                    modifier = Modifier.size(if (isFullscreen) 21.dp else 18.dp)
+                                    modifier = Modifier.size(21.dp)
                                 )
                             }
                         }

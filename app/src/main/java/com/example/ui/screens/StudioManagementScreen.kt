@@ -340,11 +340,11 @@ fun StudioManagementScreen(
                         ) {
                             val isBetaTest = LocalBetaTestPrivacy.current
 
-                            val studioCustomBg = remember(studio.logoBgColor, palette.cardBg) {
+                            val studioCustomBg = remember(studio.logoBgColor) {
                                 if (!studio.logoBgColor.isNullOrBlank()) {
-                                    parseHexColor(studio.logoBgColor, palette.cardBg)
+                                    parseHexColor(studio.logoBgColor, Color(0xFF000000))
                                 } else {
-                                    palette.cardBg
+                                    Color(0xFF000000)
                                 }
                             }
 
@@ -487,7 +487,7 @@ fun StudioManagementScreen(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Studio Name *") },
+                        label = { Text("Studio Name") },
                         isError = isDuplicate,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = palette.cardBg,
@@ -534,7 +534,7 @@ fun StudioManagementScreen(
                             modifier = Modifier
                                 .size(54.dp)
                                 .clip(CircleShape)
-                                .background(palette.surface)
+                                .background(Color(0xFF000000))
                                 .border(1.5.dp, circleBorderColor, CircleShape),
                             contentAlignment = Alignment.Center
                         ) {

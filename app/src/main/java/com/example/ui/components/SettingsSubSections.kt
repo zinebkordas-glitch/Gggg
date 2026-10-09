@@ -117,16 +117,6 @@ fun SettingsMainMenu(
             )
         }
 
-        Spacer(modifier = Modifier.height(28.dp))
-
-        Text(
-            text = "Goony • Version 1.0.0 (Build 42)",
-            style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-            color = palette.textMuted,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.fillMaxWidth()
-        )
-
         Spacer(modifier = Modifier.height(96.dp))
     }
 }

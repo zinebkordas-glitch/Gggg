@@ -1,14 +1,11 @@
 package com.example.ui.components
 
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,10 +16,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.media3.common.C
 import com.example.ui.theme.LocalAccentColor
 
@@ -64,39 +59,15 @@ fun PlayerTimelineScrubber(
         if (duration > 0) (currentPos.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
     }
     val bufferedFraction = if (duration > 0) (bufferedPos.toFloat() / duration.toFloat()).coerceIn(0f, 1f) else 0f
-    val scrubTimeMs = (effectiveFraction * duration).toLong()
 
-    Column(
-        modifier = modifier.padding(vertical = if (isFullscreen) 4.dp else 2.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        // Scrubbing Time Preview Tooltip
-        if (isScrubbing && duration > 0) {
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color.Black.copy(alpha = 0.85f),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.2f)),
-                modifier = Modifier
-                    .padding(bottom = 4.dp)
-                    .shadow(6.dp, RoundedCornerShape(8.dp))
-            ) {
-                Text(
-                    text = formatPlayerDuration(scrubTimeMs),
-                    color = Color.White,
-                    fontSize = if (isFullscreen) 12.sp else 11.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
-                )
-            }
-        }
-
-        // Custom Interactive Track Box
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(if (isFullscreen) 32.dp else 26.dp)
-                .onSizeChanged { scrubberWidthPx = it.width.toFloat().coerceAtLeast(1f) }
-                .pointerInput(duration) {
+    // Custom Interactive Track Box
+    Box(
+        modifier = modifier
+            .padding(vertical = if (isFullscreen) 4.dp else 2.dp)
+            .fillMaxWidth()
+            .height(if (isFullscreen) 32.dp else 26.dp)
+            .onSizeChanged { scrubberWidthPx = it.width.toFloat().coerceAtLeast(1f) }
+            .pointerInput(duration) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
                         down.consume()
@@ -185,5 +156,4 @@ fun PlayerTimelineScrubber(
                     .clip(CircleShape)
             )
         }
-    }
 }

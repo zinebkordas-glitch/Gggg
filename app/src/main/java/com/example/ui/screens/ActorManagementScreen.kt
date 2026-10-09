@@ -505,7 +505,7 @@ fun ActorManagementScreen(
                     OutlinedTextField(
                         value = name,
                         onValueChange = { name = it },
-                        label = { Text("Actor Name *") },
+                        label = { Text("Actor Name") },
                         isError = isDuplicate,
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedContainerColor = palette.cardBg,

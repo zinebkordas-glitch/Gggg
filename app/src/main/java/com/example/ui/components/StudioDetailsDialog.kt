@@ -69,7 +69,7 @@ fun StudioDetailsDialog(
     val palette = LocalVaultPalette.current
 
     val currentGray = (gradientFraction * 255).toInt().coerceIn(0, 255)
-    val currentBgColor = if (isCustomBgEnabled) Color(currentGray, currentGray, currentGray) else MaterialTheme.colorScheme.surfaceVariant
+    val currentBgColor = if (isCustomBgEnabled) Color(currentGray, currentGray, currentGray) else Color(0xFF000000)
     val hexString = String.format(Locale.US, "#%02X%02X%02X", currentGray, currentGray, currentGray)
 
     AlertDialog(

@@ -61,6 +61,16 @@ val LocalTopBarContent = compositionLocalOf<MutableState<(@Composable () -> Unit
 
 val LocalHazeState = compositionLocalOf<HazeState?> { null }
 
+private fun getScreenHierarchyOrder(screen: ScreenState): Int {
+    return when (screen) {
+        is ScreenState.Home, is ScreenState.Bookmarks, is ScreenState.AddEditLink -> 0
+        is ScreenState.Actors, is ScreenState.AddEditActor, is ScreenState.ActorScenes -> 1
+        is ScreenState.Studios, is ScreenState.AddEditStudio, is ScreenState.StudioScenes -> 2
+        is ScreenState.StashDb -> 3
+        is ScreenState.Settings -> 4
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun MainAppShell(viewModel: MainViewModel) {
@@ -167,7 +177,7 @@ fun MainAppShell(viewModel: MainViewModel) {
         } else {
         ModalNavigationDrawer(
             drawerState = drawerState,
-            gesturesEnabled = true,
+            gesturesEnabled = drawerState.isOpen,
             scrimColor = Color.Black.copy(alpha = 0.5f),
             drawerContent = {
                 ModalDrawerSheet(
@@ -378,25 +388,42 @@ fun MainAppShell(viewModel: MainViewModel) {
                     AnimatedContent(
                         targetState = currentScreen,
                         transitionSpec = {
-                            val isBack = navDirection == MainViewModel.NavigationDirection.BACK
-                            if (isBack) {
-                                (slideInHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
-                                        fadeIn(animationSpec = tween(240, easing = LinearOutSlowInEasing)) +
-                                        scaleIn(animationSpec = tween(280, easing = FastOutSlowInEasing), initialScale = 0.96f))
-                                    .togetherWith(
-                                        slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { width -> width / 3 } +
-                                                fadeOut(animationSpec = tween(200)) +
-                                                scaleOut(animationSpec = tween(260), targetScale = 0.96f)
-                                    )
+                            val initialOrder = getScreenHierarchyOrder(initialState)
+                            val targetOrder = getScreenHierarchyOrder(targetState)
+                            val isBack = if (navDirection == MainViewModel.NavigationDirection.BACK) {
+                                true
+                            } else if (initialOrder != targetOrder) {
+                                targetOrder < initialOrder
                             } else {
-                                (slideInHorizontally(animationSpec = tween(280, easing = FastOutSlowInEasing)) { width -> width / 3 } +
-                                        fadeIn(animationSpec = tween(240, easing = LinearOutSlowInEasing)) +
-                                        scaleIn(animationSpec = tween(280, easing = FastOutSlowInEasing), initialScale = 0.96f))
-                                    .togetherWith(
-                                        slideOutHorizontally(animationSpec = tween(260, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
-                                                fadeOut(animationSpec = tween(200)) +
-                                                scaleOut(animationSpec = tween(260), targetScale = 0.96f)
+                                navDirection == MainViewModel.NavigationDirection.BACK
+                            }
+
+                            if (isBack) {
+                                (slideInHorizontally(
+                                    animationSpec = tween(320, easing = FastOutSlowInEasing)
+                                ) { width -> -width / 3 } + fadeIn(
+                                    animationSpec = tween(220, easing = LinearOutSlowInEasing)
+                                )).togetherWith(
+                                    slideOutHorizontally(
+                                        animationSpec = tween(320, easing = FastOutSlowInEasing)
+                                    ) { width -> width }
+                                ).apply {
+                                    targetContentZIndex = 0f
+                                }
+                            } else {
+                                (slideInHorizontally(
+                                    animationSpec = tween(320, easing = FastOutSlowInEasing)
+                                ) { width -> width } + fadeIn(
+                                    animationSpec = tween(220, easing = LinearOutSlowInEasing)
+                                )).togetherWith(
+                                    slideOutHorizontally(
+                                        animationSpec = tween(320, easing = FastOutSlowInEasing)
+                                    ) { width -> -width / 3 } + fadeOut(
+                                        animationSpec = tween(200, easing = FastOutLinearInEasing)
                                     )
+                                ).apply {
+                                    targetContentZIndex = 1f
+                                }
                             }
                         },
                         label = "screen_motion_transition"
@@ -458,6 +485,7 @@ fun MainAppShell(viewModel: MainViewModel) {
                 ) {
                     LiquidGlassNavigationBar(
                         selectedId = selectedTabId,
+                        hazeState = hazeState,
                         onItemSelected = { item ->
                             viewModel.navigateTo(item.targetScreen)
                         }

@@ -1,6 +1,7 @@
 package com.example.ui.components
 
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -158,19 +159,22 @@ fun SettingsRow(
 fun settingsTransitionSpec(): AnimatedContentTransitionScope<SettingsSection>.() -> ContentTransform = {
     val isBack = targetState == SettingsSection.MAIN_MENU
     if (isBack) {
-        (slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+        (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> -width / 3 } +
                 fadeIn(animationSpec = tween(200, easing = LinearOutSlowInEasing)))
             .togetherWith(
-                slideOutHorizontally(animationSpec = tween(200, easing = FastOutSlowInEasing)) { width -> width / 4 } +
-                        fadeOut(animationSpec = tween(170))
-            )
+                slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width }
+            ).apply {
+                targetContentZIndex = 0f
+            }
     } else {
-        (slideInHorizontally(animationSpec = tween(220, easing = FastOutSlowInEasing)) { width -> width / 4 } +
+        (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width } +
                 fadeIn(animationSpec = tween(200, easing = LinearOutSlowInEasing)))
             .togetherWith(
-                slideOutHorizontally(animationSpec = tween(200, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
-                        fadeOut(animationSpec = tween(170))
-            )
+                slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> -width / 3 } +
+                        fadeOut(animationSpec = tween(200, easing = FastOutLinearInEasing))
+            ).apply {
+                targetContentZIndex = 1f
+            }
     }
 }
 

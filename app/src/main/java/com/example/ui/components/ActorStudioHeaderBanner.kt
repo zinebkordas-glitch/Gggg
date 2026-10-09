@@ -13,6 +13,7 @@ import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
@@ -117,9 +118,9 @@ fun ActorStudioHeaderBanner(
             }
         } else if (studio != null) {
             val studioCustomBg = if (!studio.logoBgColor.isNullOrBlank()) {
-                parseHexColor(studio.logoBgColor, palette.surface)
+                parseHexColor(studio.logoBgColor, Color(0xFF000000))
             } else {
-                palette.surface
+                Color(0xFF000000)
             }
             Box(
                 modifier = Modifier

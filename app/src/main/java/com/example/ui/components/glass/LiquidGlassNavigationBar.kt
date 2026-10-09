@@ -31,6 +31,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import com.example.ui.components.glass.backdrop.GlassSurface
+import com.example.ui.screens.LocalHazeState
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
 
@@ -50,6 +51,7 @@ fun LiquidGlassNavigationBar(
     selectedId: String,
     onItemSelected: (LiquidGlassNavItem) -> Unit,
     modifier: Modifier = Modifier,
+    hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
     onItemLongPressed: ((LiquidGlassNavItem) -> Unit)? = null
 ) {
     val palette = LocalVaultPalette.current
@@ -120,6 +122,7 @@ fun LiquidGlassNavigationBar(
                 shape = barShape,
                 isDark = isDark,
                 accentColor = accent,
+                hazeState = hazeState,
                 modifier = Modifier.fillMaxSize()
             )
 

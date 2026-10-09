@@ -134,10 +134,15 @@ fun CoreMediaPlayer(
     }
 
     var isVrMode by remember { mutableStateOf(false) }
+    var vrUseGyro by remember { mutableStateOf(true) }
+    var vrRecenterTrigger by remember { mutableIntStateOf(0) }
     var sphericalViewRef by remember { mutableStateOf<SphericalGLSurfaceView?>(null) }
     var vrStereoMode by remember(primaryQuality?.url) {
         val url = primaryQuality?.url?.lowercase() ?: ""
-        val isSbs = url.contains("180") || url.contains("sbs") || url.contains("half-sbs") || title.lowercase().contains("180") || title.lowercase().contains("sbs")
+        val titleLower = title.lowercase()
+        // Accurate VR 180 / SBS / 3D detection avoiding false positive number IDs
+        val sbsRegex = Regex("""\b(vr180|180vr|half-sbs|sbs|over-under|top-bottom|3d)\b""")
+        val isSbs = sbsRegex.containsMatchIn(url) || sbsRegex.containsMatchIn(titleLower)
         mutableIntStateOf(if (isSbs) C.STEREO_MODE_LEFT_RIGHT else C.STEREO_MODE_MONO)
     }
 
@@ -145,6 +150,28 @@ fun CoreMediaPlayer(
         val formatStereo = activeExoPlayer.videoFormat?.stereoMode
         if (formatStereo != null && formatStereo != androidx.media3.common.Format.NO_VALUE && formatStereo != C.STEREO_MODE_MONO) {
             vrStereoMode = formatStereo
+        }
+    }
+
+    // Lifecycle binding for SphericalGLSurfaceView (prevents gyroscope sensor & GL thread battery drain in background)
+    DisposableEffect(activity, isVrMode, sphericalViewRef) {
+        val compAct = activity as? ComponentActivity
+        val observer = LifecycleEventObserver { _, event ->
+            if (isVrMode) {
+                when (event) {
+                    Lifecycle.Event.ON_PAUSE, Lifecycle.Event.ON_STOP -> {
+                        sphericalViewRef?.onPause()
+                    }
+                    Lifecycle.Event.ON_RESUME -> {
+                        sphericalViewRef?.onResume()
+                    }
+                    else -> Unit
+                }
+            }
+        }
+        compAct?.lifecycle?.addObserver(observer)
+        onDispose {
+            compAct?.lifecycle?.removeObserver(observer)
         }
     }
 
@@ -163,7 +190,10 @@ fun CoreMediaPlayer(
     }
 
     val handleBackAction = {
-        if (isFullscreen && isLandscape) {
+        if (isVrMode) {
+            isVrMode = false
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        } else if (isFullscreen && isLandscape) {
             activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         } else if (!isInPipMode) {
             onClose()
@@ -332,6 +362,8 @@ fun CoreMediaPlayer(
             }
         )
     } else {
+        var lastVrTapTime by remember { mutableLongStateOf(0L) }
+        var lastVrTapX by remember { mutableFloatStateOf(0f) }
         Modifier.pointerInput(Unit) {
             awaitEachGesture {
                 val down = awaitFirstDown(requireUnconsumed = false)
@@ -344,14 +376,44 @@ fun CoreMediaPlayer(
                     val change = event.changes.firstOrNull { it.id == down.id } ?: break
                     if (change.pressed) {
                         val dist = (change.position - startPos).getDistance()
-                        if (dist > 14f) {
+                        if (dist > 16f) {
                             hasDragged = true
                         }
                     } else {
                         val elapsed = System.currentTimeMillis() - startTime
                         val dist = (change.position - startPos).getDistance()
-                        if (!hasDragged && dist < 14f && elapsed < 320L) {
-                            showControls = !showControls
+                        if (!hasDragged && dist < 16f && elapsed < 350L) {
+                            val now = System.currentTimeMillis()
+                            val isDoubleTap = (now - lastVrTapTime < 320L) && (kotlin.math.abs(startPos.x - lastVrTapX) < 140f)
+                            if (isDoubleTap && startPos.x < size.width * 0.25f) {
+                                // Double-tap left side in Magic Window -> Seek -10s
+                                if (duration > 0 && duration != C.TIME_UNSET) {
+                                    val target = (activeExoPlayer.currentPosition - 10000).coerceAtLeast(0L)
+                                    isBuffering = true
+                                    activeExoPlayer.seekTo(target)
+                                    currentPos = target
+                                } else {
+                                    activeExoPlayer.seekBack()
+                                }
+                                lastSeekTime = now
+                                lastVrTapTime = 0L
+                            } else if (isDoubleTap && startPos.x > size.width * 0.75f) {
+                                // Double-tap right side in Magic Window -> Seek +10s
+                                if (duration > 0 && duration != C.TIME_UNSET) {
+                                    val target = (activeExoPlayer.currentPosition + 10000).coerceAtMost(duration).coerceAtLeast(0L)
+                                    isBuffering = true
+                                    activeExoPlayer.seekTo(target)
+                                    currentPos = target
+                                } else {
+                                    activeExoPlayer.seekForward()
+                                }
+                                lastSeekTime = now
+                                lastVrTapTime = 0L
+                            } else {
+                                lastVrTapTime = now
+                                lastVrTapX = startPos.x
+                                showControls = !showControls
+                            }
                         }
                         break
                     }
@@ -369,53 +431,52 @@ fun CoreMediaPlayer(
     ) {
         if (isVrMode) {
             // High-Performance Monoscopic & Stereo 360° / 180° Spherical GL Surface (Gyroscope & Touch Dragging)
-            AndroidView(
-                factory = { ctx ->
-                    SphericalGLSurfaceView(ctx).apply {
-                        setDefaultStereoMode(vrStereoMode)
-                        setUseSensorRotation(true)
-                        addVideoSurfaceListener(object : SphericalGLSurfaceView.VideoSurfaceListener {
-                            override fun onVideoSurfaceCreated(surface: Surface) {
-                                activeExoPlayer.setVideoSurface(surface)
-                                if (activeExoPlayer.playbackState == androidx.media3.common.Player.STATE_READY) {
-                                    activeExoPlayer.play()
+            key(vrRecenterTrigger, vrStereoMode) {
+                AndroidView(
+                    factory = { ctx ->
+                        SphericalGLSurfaceView(ctx).apply {
+                            setDefaultStereoMode(vrStereoMode)
+                            setUseSensorRotation(vrUseGyro)
+                            addVideoSurfaceListener(object : SphericalGLSurfaceView.VideoSurfaceListener {
+                                override fun onVideoSurfaceCreated(surface: Surface) {
+                                    activeExoPlayer.setVideoSurface(surface)
+                                    if (activeExoPlayer.playbackState == androidx.media3.common.Player.STATE_READY) {
+                                        activeExoPlayer.play()
+                                    }
                                 }
-                            }
-                            override fun onVideoSurfaceDestroyed(surface: Surface) {
-                                // Keep surface reference intact during quick transitions
-                            }
-                        })
-                        activeExoPlayer.setVideoFrameMetadataListener(videoFrameMetadataListener)
-                        activeExoPlayer.setCameraMotionListener(cameraMotionListener)
-                        layoutParams = FrameLayout.LayoutParams(
-                            ViewGroup.LayoutParams.MATCH_PARENT,
-                            ViewGroup.LayoutParams.MATCH_PARENT
-                        )
-                        sphericalViewRef = this
-                        onResume()
-                    }
-                },
-                update = { sphericalView ->
-                    sphericalViewRef = sphericalView
-                    sphericalView.setDefaultStereoMode(vrStereoMode)
-                    sphericalView.onResume()
-                },
-                onRelease = { sphericalView ->
-                    sphericalView.onPause()
-                    activeExoPlayer.setVideoSurface(null)
-                    activeExoPlayer.clearVideoFrameMetadataListener(sphericalView.videoFrameMetadataListener)
-                    activeExoPlayer.clearCameraMotionListener(sphericalView.cameraMotionListener)
-                    sphericalViewRef = null
-                },
-                onReset = { sphericalView ->
-                    sphericalView.onPause()
-                    activeExoPlayer.setVideoSurface(null)
-                    activeExoPlayer.clearVideoFrameMetadataListener(sphericalView.videoFrameMetadataListener)
-                    activeExoPlayer.clearCameraMotionListener(sphericalView.cameraMotionListener)
-                    sphericalViewRef = null
-                },
-                modifier = Modifier.fillMaxSize()
-            )
+                                override fun onVideoSurfaceDestroyed(surface: Surface) {
+                                    // Surface lifecycle preserved
+                                }
+                            })
+                            activeExoPlayer.setVideoFrameMetadataListener(videoFrameMetadataListener)
+                            activeExoPlayer.setCameraMotionListener(cameraMotionListener)
+                            layoutParams = FrameLayout.LayoutParams(
+                                ViewGroup.LayoutParams.MATCH_PARENT,
+                                ViewGroup.LayoutParams.MATCH_PARENT
+                            )
+                            sphericalViewRef = this
+                            onResume()
+                        }
+                    },
+                    update = { sphericalView ->
+                        sphericalViewRef = sphericalView
+                        sphericalView.setUseSensorRotation(vrUseGyro)
+                    },
+                    onRelease = { sphericalView ->
+                        sphericalView.onPause()
+                        activeExoPlayer.clearVideoFrameMetadataListener(sphericalView.videoFrameMetadataListener)
+                        activeExoPlayer.clearCameraMotionListener(sphericalView.cameraMotionListener)
+                        sphericalViewRef = null
+                    },
+                    onReset = { sphericalView ->
+                        sphericalView.onPause()
+                        activeExoPlayer.clearVideoFrameMetadataListener(sphericalView.videoFrameMetadataListener)
+                        activeExoPlayer.clearCameraMotionListener(sphericalView.cameraMotionListener)
+                        sphericalViewRef = null
+                    },
+                    modifier = Modifier.fillMaxSize()
+                )
+            }
         } else {
             // Standard 2D Surface with Safe Lifecycle Detachment
             AndroidView(
@@ -513,15 +574,28 @@ fun CoreMediaPlayer(
             isBuffering = isBuffering,
             is4kOrHdr = isRealHdrStream,
             isVrMode = isVrMode,
+            vrUseGyro = vrUseGyro,
             vrStereoMode = vrStereoMode,
             onToggleVrMode = {
-                isVrMode = !isVrMode
+                val nextState = !isVrMode
+                isVrMode = nextState
+                if (nextState) {
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE
+                } else {
+                    activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+                }
             },
-            onCycleVrStereoMode = {
-                vrStereoMode = when (vrStereoMode) {
-                    C.STEREO_MODE_MONO -> C.STEREO_MODE_LEFT_RIGHT
-                    C.STEREO_MODE_LEFT_RIGHT -> C.STEREO_MODE_TOP_BOTTOM
-                    else -> C.STEREO_MODE_MONO
+            onToggleVrGyro = {
+                vrUseGyro = !vrUseGyro
+            },
+            onRecenterVr = {
+                vrRecenterTrigger++
+            },
+            onToggleVrStereoMode = {
+                vrStereoMode = if (vrStereoMode == C.STEREO_MODE_LEFT_RIGHT) {
+                    C.STEREO_MODE_MONO
+                } else {
+                    C.STEREO_MODE_LEFT_RIGHT
                 }
             },
             onBack = handleBackAction,

@@ -41,10 +41,10 @@ fun GlassSurface(
     accentColor: Color,
     modifier: Modifier = Modifier,
     blurRadius: Dp = 24.dp,
+    hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
     refractionStrength: Float = 0f,
     chromaticAberration: Float = 0f
 ) {
-    val hazeState = LocalHazeState.current
 
     val drawEdgeLight: DrawScope.() -> Unit = {
         val cornerPx = size.height * 0.5f
@@ -171,16 +171,16 @@ fun GlassSurface(
 
     if (hazeState != null) {
         val hazeStyle = HazeStyle(
-            backgroundColor = if (isDark) Color(0xFF141620) else Color(0xFFF6F8FC),
+            backgroundColor = Color.Transparent,
             tint = HazeTint(
                 color = if (isDark) {
-                    Color(0xFF141620).copy(alpha = 0.70f)
+                    Color(0xFF10121A).copy(alpha = 0.62f)
                 } else {
-                    Color.White.copy(alpha = 0.76f)
+                    Color.White.copy(alpha = 0.68f)
                 }
             ),
             blurRadius = blurRadius,
-            noiseFactor = 0.03f
+            noiseFactor = 0.02f
         )
 
         // Genuine Real-Time Backdrop Frosted Blur with Bilateral Tapering Edge Light
@@ -199,17 +199,17 @@ fun GlassSurface(
         // High-fidelity fallback
         val squareFrostGradient = if (isDark) {
             listOf(
-                Color(0xFF1E212D).copy(alpha = 0.76f),
-                Color(0xFF141620).copy(alpha = 0.82f),
-                accentColor.copy(alpha = 0.06f),
-                Color(0xFF0F1018).copy(alpha = 0.86f)
+                Color(0xFF1E212D).copy(alpha = 0.65f),
+                Color(0xFF141620).copy(alpha = 0.70f),
+                accentColor.copy(alpha = 0.05f),
+                Color(0xFF0F1018).copy(alpha = 0.75f)
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.88f),
-                Color(0xFFF3F5FA).copy(alpha = 0.82f),
-                accentColor.copy(alpha = 0.05f),
-                Color(0xFFE8ECF4).copy(alpha = 0.86f)
+                Color.White.copy(alpha = 0.75f),
+                Color(0xFFF3F5FA).copy(alpha = 0.70f),
+                accentColor.copy(alpha = 0.04f),
+                Color(0xFFE8ECF4).copy(alpha = 0.75f)
             )
         }
 
@@ -217,7 +217,6 @@ fun GlassSurface(
             modifier = modifier
                 .fillMaxSize()
                 .clip(shape)
-                .blur(radius = blurRadius)
                 .background(Brush.verticalGradient(squareFrostGradient))
                 .drawBehind(drawEdgeLight)
         )

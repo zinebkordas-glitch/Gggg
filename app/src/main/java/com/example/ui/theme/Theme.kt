@@ -47,6 +47,10 @@ fun parseHexColor(hex: String, fallback: Color = Color(0xFF7C4DFF)): Color {
     }
 }
 
+/** Pure black (#000000) default background for studio logos and circular emblems */
+val DefaultStudioLogoBg = Color(0xFF000000)
+
+
 @Composable
 fun GoonyTheme(
     paletteName: String = "Dark",

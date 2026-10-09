@@ -41,8 +41,8 @@ import com.example.ui.theme.LocalBetaTestPrivacy
 import com.example.ui.theme.LocalVaultPalette
 import com.example.ui.theme.privacyImageBlur
 
-val StudioLogoBgDark = Color(0xFF0F0F12)
-val StudioLogoBgLight = Color(0xFF1F2937)
+val StudioLogoBgDark = Color(0xFF000000)
+val StudioLogoBgLight = Color(0xFF000000)
 
 /**
  * Circular Item for Actor displayed in the horizontal row (Circle on top, Name below)
