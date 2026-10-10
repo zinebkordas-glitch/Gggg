@@ -2,6 +2,7 @@ package com.example.ui.components
 
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -26,10 +27,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -125,6 +129,148 @@ fun SleekSlimSlider(
         }
     }
 }
+
+/**
+ * Ultra-smooth, tactile fluid slider with spring physics on press, continuous touch gesture tracking,
+ * rounded capsule track, and glowing floating thumb.
+ */
+@Composable
+fun SmoothFluidSlider(
+    value: Float,
+    onValueChange: (Float) -> Unit,
+    valueRange: ClosedFloatingPointRange<Float>,
+    modifier: Modifier = Modifier,
+    activeColor: Color = MaterialTheme.colorScheme.primary,
+    inactiveTrackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
+    trackHeight: Dp = 12.dp,
+    thumbDiameter: Dp = 22.dp,
+    expandedThumbDiameter: Dp = 28.dp,
+    testTag: String? = null
+) {
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentValueRange by rememberUpdatedState(valueRange)
+    val haptic = LocalHapticFeedback.current
+    var isDragging by remember { mutableStateOf(false) }
+
+    val animatedThumbDiameter by animateDpAsState(
+        targetValue = if (isDragging) expandedThumbDiameter else thumbDiameter,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessMediumLow
+        ),
+        label = "fluid_thumb_diameter"
+    )
+    val animatedElevation by animateDpAsState(
+        targetValue = if (isDragging) 6.dp else 2.5.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "fluid_thumb_elevation"
+    )
+
+    val span = (currentValueRange.endInclusive - currentValueRange.start).coerceAtLeast(0.0001f)
+    val fraction = ((value - currentValueRange.start) / span).coerceIn(0f, 1f)
+
+    BoxWithConstraints(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(44.dp)
+            .then(if (testTag != null) Modifier.testTag(testTag) else Modifier),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        val widthPx = constraints.maxWidth.toFloat()
+        val density = LocalDensity.current
+        val maxThumbRadiusPx = with(density) { expandedThumbDiameter.toPx() / 2f }
+        val usableWidth = (widthPx - maxThumbRadiusPx * 2f).coerceAtLeast(1f)
+
+        fun updateFromTouch(touchX: Float) {
+            val clamped = (touchX - maxThumbRadiusPx).coerceIn(0f, usableWidth)
+            val newFraction = clamped / usableWidth
+            val newValue = currentValueRange.start + newFraction * span
+            currentOnValueChange(newValue)
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(usableWidth) {
+                    awaitEachGesture {
+                        val down = awaitFirstDown(requireUnconsumed = false)
+                        down.consume()
+                        isDragging = true
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        updateFromTouch(down.position.x)
+                        while (true) {
+                            val event = awaitPointerEvent()
+                            val change = event.changes.firstOrNull { it.id == down.id } ?: break
+                            if (!change.pressed) break
+                            change.consume()
+                            updateFromTouch(change.position.x)
+                        }
+                        isDragging = false
+                    }
+                },
+            contentAlignment = Alignment.CenterStart
+        ) {
+            // Inactive track: soft rounded capsule with subtle border
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(trackHeight)
+                    .clip(CircleShape)
+                    .background(inactiveTrackColor)
+                    .border(0.75.dp, inactiveTrackColor.copy(alpha = 0.5f), CircleShape)
+            )
+
+            // Active track: glowing liquid gradient pill
+            val thumbCenterPx = maxThumbRadiusPx + fraction * usableWidth
+            val activeTrackWidthDp = with(density) { (thumbCenterPx + (trackHeight.toPx() / 2f)).toDp() }
+            val maxWidthDp = with(density) { widthPx.toDp() }
+            val clampedActiveWidthDp = if (activeTrackWidthDp > maxWidthDp) maxWidthDp else if (activeTrackWidthDp < 0.dp) 0.dp else activeTrackWidthDp
+            Box(
+                modifier = Modifier
+                    .width(clampedActiveWidthDp)
+                    .height(trackHeight)
+                    .clip(CircleShape)
+                    .background(
+                        Brush.horizontalGradient(
+                            listOf(
+                                activeColor.copy(alpha = 0.75f),
+                                activeColor
+                            )
+                        )
+                    )
+            )
+
+            // Thumb: tactile glowing floating pearl with responsive spring expansion
+            val currentThumbDiameterPx = with(density) { animatedThumbDiameter.toPx() }
+            val thumbOffset = with(density) { (thumbCenterPx - currentThumbDiameterPx / 2f).toDp() }
+            val thumbCenterFill = if (activeColor.luminance() > 0.85f) Color(0xFF1E1E1E) else Color.White
+
+            Box(
+                modifier = Modifier
+                    .offset(x = thumbOffset)
+                    .size(animatedThumbDiameter)
+                    .shadow(
+                        elevation = animatedElevation,
+                        shape = CircleShape,
+                        spotColor = activeColor.copy(alpha = 0.45f)
+                    )
+                    .clip(CircleShape)
+                    .background(thumbCenterFill)
+                    .border(2.5.dp, activeColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                // Subtle center pip
+                Box(
+                    modifier = Modifier
+                        .size(if (isDragging) 8.dp else 6.dp)
+                        .clip(CircleShape)
+                        .background(activeColor)
+                )
+            }
+        }
+    }
+}
+
 
 @Composable
 fun GradientSlider(

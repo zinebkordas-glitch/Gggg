@@ -90,6 +90,7 @@ fun SettingsRow(
     title: String,
     subtitle: String? = null,
     icon: Painter? = null,
+    imageVector: androidx.compose.ui.graphics.vector.ImageVector? = null,
     trailing: @Composable (() -> Unit)? = null,
     onClick: (() -> Unit)? = null
 ) {
@@ -109,7 +110,7 @@ fun SettingsRow(
             modifier = Modifier.weight(1f),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (icon != null) {
+            if (icon != null || imageVector != null) {
                 Box(
                     modifier = Modifier
                         .size(44.dp)
@@ -117,12 +118,21 @@ fun SettingsRow(
                         .background(accent.copy(alpha = 0.15f)),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        painter = icon,
-                        contentDescription = null,
-                        tint = accent,
-                        modifier = Modifier.size(22.dp)
-                    )
+                    if (imageVector != null) {
+                        Icon(
+                            imageVector = imageVector,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    } else if (icon != null) {
+                        Icon(
+                            painter = icon,
+                            contentDescription = null,
+                            tint = accent,
+                            modifier = Modifier.size(22.dp)
+                        )
+                    }
                 }
                 Spacer(modifier = Modifier.width(16.dp))
             }
@@ -156,22 +166,33 @@ fun SettingsRow(
     }
 }
 
+private fun SettingsSection.sectionOrder(): Int = when (this) {
+    SettingsSection.MAIN_MENU -> 0
+    SettingsSection.DISPLAY -> 1
+    SettingsSection.PRIVACY -> 2
+    SettingsSection.INTEGRATIONS -> 3
+    SettingsSection.FILTER -> 4
+    SettingsSection.DATA_BACKUP -> 5
+    SettingsSection.SAMPLE_DATA -> 6
+}
+
 fun settingsTransitionSpec(): AnimatedContentTransitionScope<SettingsSection>.() -> ContentTransform = {
-    val isBack = targetState == SettingsSection.MAIN_MENU
+    val isBack = targetState == SettingsSection.MAIN_MENU || (targetState.sectionOrder() < initialState.sectionOrder())
     if (isBack) {
-        (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> -width / 3 } +
-                fadeIn(animationSpec = tween(200, easing = LinearOutSlowInEasing)))
+        (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+                fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)))
             .togetherWith(
-                slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width }
+                slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width } +
+                        fadeOut(animationSpec = tween(220, easing = FastOutLinearInEasing))
             ).apply {
                 targetContentZIndex = 0f
             }
     } else {
         (slideInHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> width } +
-                fadeIn(animationSpec = tween(200, easing = LinearOutSlowInEasing)))
+                fadeIn(animationSpec = tween(220, easing = LinearOutSlowInEasing)))
             .togetherWith(
-                slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> -width / 3 } +
-                        fadeOut(animationSpec = tween(200, easing = FastOutLinearInEasing))
+                slideOutHorizontally(animationSpec = tween(300, easing = FastOutSlowInEasing)) { width -> -width / 4 } +
+                        fadeOut(animationSpec = tween(220, easing = FastOutLinearInEasing))
             ).apply {
                 targetContentZIndex = 1f
             }

@@ -81,5 +81,10 @@ data class SettingsEntity(
     val debridOrder: String = "AUTO", // "AUTO", "REAL_DEBRID_FIRST", "TORBOX_FIRST"
     val enableStudioFilter: Boolean = true,
     val blockedStudioNames: List<String> = emptyList(),
-    val blockedStudioIds: List<String> = emptyList()
+    val blockedStudioIds: List<String> = emptyList(),
+    val navBarHeightDp: Int = 64,
+    val navBarTransparency: Float = 0.65f,
+    val navBarBlurDp: Int = 24,
+    val isPasscodeEnabled: Boolean = false,
+    val passcodeHash: String = ""
 )

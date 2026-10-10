@@ -41,6 +41,7 @@ fun GlassSurface(
     accentColor: Color,
     modifier: Modifier = Modifier,
     blurRadius: Dp = 24.dp,
+    transparency: Float = 0.65f,
     hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
     refractionStrength: Float = 0f,
     chromaticAberration: Float = 0f
@@ -169,14 +170,20 @@ fun GlassSurface(
         )
     }
 
+    val tintAlpha = if (isDark) {
+        (0.85f * (1f - transparency * 0.70f)).coerceIn(0.12f, 0.92f)
+    } else {
+        (0.90f * (1f - transparency * 0.70f)).coerceIn(0.15f, 0.95f)
+    }
+
     if (hazeState != null) {
         val hazeStyle = HazeStyle(
             backgroundColor = Color.Transparent,
             tint = HazeTint(
                 color = if (isDark) {
-                    Color(0xFF10121A).copy(alpha = 0.62f)
+                    Color(0xFF10121A).copy(alpha = tintAlpha)
                 } else {
-                    Color.White.copy(alpha = 0.68f)
+                    Color.White.copy(alpha = tintAlpha)
                 }
             ),
             blurRadius = blurRadius,
@@ -199,17 +206,17 @@ fun GlassSurface(
         // High-fidelity fallback
         val squareFrostGradient = if (isDark) {
             listOf(
-                Color(0xFF1E212D).copy(alpha = 0.65f),
-                Color(0xFF141620).copy(alpha = 0.70f),
+                Color(0xFF1E212D).copy(alpha = tintAlpha),
+                Color(0xFF141620).copy(alpha = tintAlpha),
                 accentColor.copy(alpha = 0.05f),
-                Color(0xFF0F1018).copy(alpha = 0.75f)
+                Color(0xFF0F1018).copy(alpha = tintAlpha)
             )
         } else {
             listOf(
-                Color.White.copy(alpha = 0.75f),
-                Color(0xFFF3F5FA).copy(alpha = 0.70f),
+                Color.White.copy(alpha = tintAlpha),
+                Color(0xFFF3F5FA).copy(alpha = tintAlpha),
                 accentColor.copy(alpha = 0.04f),
-                Color(0xFFE8ECF4).copy(alpha = 0.75f)
+                Color(0xFFE8ECF4).copy(alpha = tintAlpha)
             )
         }
 

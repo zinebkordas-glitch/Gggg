@@ -248,6 +248,56 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     private val screenStack = Collections.synchronizedList(mutableListOf<ScreenState>(ScreenState.Home))
 
+    // App Lock State (PIN Security)
+    private val _isAppLocked = MutableStateFlow(false)
+    val isAppLocked: StateFlow<Boolean> = _isAppLocked.asStateFlow()
+
+    private var _hasUnlockedThisSession = false
+
+    fun unlockApp(enteredPin: String): Boolean {
+        val currentSettings = settings.value ?: return false
+        if (!currentSettings.isPasscodeEnabled || currentSettings.passcodeHash.isBlank()) {
+            _isAppLocked.value = false
+            _hasUnlockedThisSession = true
+            return true
+        }
+        val isValid = com.example.util.PasscodeManager.verifyPasscode(enteredPin, currentSettings.passcodeHash)
+        if (isValid) {
+            _hasUnlockedThisSession = true
+            _isAppLocked.value = false
+        }
+        return isValid
+    }
+
+    fun lockApp() {
+        val currentSettings = settings.value ?: return
+        if (currentSettings.isPasscodeEnabled && currentSettings.passcodeHash.isNotBlank()) {
+            _hasUnlockedThisSession = false
+            _isAppLocked.value = true
+        }
+    }
+
+    fun enablePasscode(newPin: String) {
+        val hash = com.example.util.PasscodeManager.hashPasscode(newPin)
+        val current = settings.value ?: SettingsEntity()
+        updateSettings(current.copy(isPasscodeEnabled = true, passcodeHash = hash))
+        _hasUnlockedThisSession = true
+        _isAppLocked.value = false
+    }
+
+    fun disablePasscode() {
+        val current = settings.value ?: SettingsEntity()
+        updateSettings(current.copy(isPasscodeEnabled = false, passcodeHash = ""))
+        _hasUnlockedThisSession = true
+        _isAppLocked.value = false
+    }
+
+    fun changePasscode(newPin: String) {
+        val hash = com.example.util.PasscodeManager.hashPasscode(newPin)
+        val current = settings.value ?: SettingsEntity()
+        updateSettings(current.copy(isPasscodeEnabled = true, passcodeHash = hash))
+    }
+
     // Multi-Key Scroll Position Memory Registry
     private val scrollPositionRegistry = ConcurrentHashMap<String, Pair<Int, Int>>()
 
@@ -1234,6 +1284,21 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             localOverride ?: dbSettings
         }
         .stateIn(viewModelScope, SharingStarted.Eagerly, SettingsEntity())
+
+    init {
+        // Monitor settings to lock app on startup if passcode protection is active
+        viewModelScope.launch {
+            settings.collect { currentSettings ->
+                if (currentSettings.isPasscodeEnabled && currentSettings.passcodeHash.isNotBlank()) {
+                    if (!_hasUnlockedThisSession) {
+                        _isAppLocked.value = true
+                    }
+                } else {
+                    _isAppLocked.value = false
+                }
+            }
+        }
+    }
 
     // High performance filtered & sorted scenes
     val filteredLinks: StateFlow<List<LinkEntity>> = combine(

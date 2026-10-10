@@ -2,6 +2,9 @@ package com.example.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.LinearOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -105,13 +108,14 @@ fun SettingsScreen(
         containerColor = palette.bg,
         contentWindowInsets = WindowInsets.statusBars,
         topBar = {
-            AppTophead(
-                title = currentSection.title(),
-                centerTitle = true,
-                customTitleContent = {
+            CenterAlignedTopAppBar(
+                title = {
                     AnimatedContent(
                         targetState = currentSection,
-                        transitionSpec = settingsTransitionSpec(),
+                        transitionSpec = {
+                            fadeIn(animationSpec = tween(180, easing = LinearOutSlowInEasing)) togetherWith
+                                    fadeOut(animationSpec = tween(140, easing = FastOutLinearInEasing))
+                        },
                         label = "settings_topbar_title"
                     ) { sec ->
                         Text(
@@ -124,7 +128,7 @@ fun SettingsScreen(
                         )
                     }
                 },
-                customNavigationIcon = {
+                navigationIcon = {
                     Box(
                         contentAlignment = Alignment.Center,
                         modifier = Modifier
@@ -146,7 +150,10 @@ fun SettingsScreen(
                             modifier = Modifier.size(20.dp)
                         )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = palette.surface
+                )
             )
         }
     ) { padding ->
@@ -196,6 +203,18 @@ fun SettingsScreen(
                             enableVideoPlayerGestures = currentSettings.enableVideoPlayerGestures,
                             onEnableVideoPlayerGesturesChange = {
                                 viewModel.updateSettings(currentSettings.copy(enableVideoPlayerGestures = it))
+                            },
+                            navBarHeightDp = currentSettings.navBarHeightDp,
+                            onNavBarHeightDpChange = {
+                                viewModel.updateSettings(currentSettings.copy(navBarHeightDp = it))
+                            },
+                            navBarTransparency = currentSettings.navBarTransparency,
+                            onNavBarTransparencyChange = {
+                                viewModel.updateSettings(currentSettings.copy(navBarTransparency = it))
+                            },
+                            navBarBlurDp = currentSettings.navBarBlurDp,
+                            onNavBarBlurDpChange = {
+                                viewModel.updateSettings(currentSettings.copy(navBarBlurDp = it))
                             }
                         )
                     }
@@ -209,7 +228,12 @@ fun SettingsScreen(
                             betaTestPrivacy = currentSettings.betaTestPrivacy,
                             onBetaTestPrivacyChange = {
                                 viewModel.updateSettings(currentSettings.copy(betaTestPrivacy = it))
-                            }
+                            },
+                            isPasscodeEnabled = currentSettings.isPasscodeEnabled,
+                            passcodeHash = currentSettings.passcodeHash,
+                            onEnablePasscode = { pin -> viewModel.enablePasscode(pin) },
+                            onDisablePasscode = { viewModel.disablePasscode() },
+                            onChangePasscode = { pin -> viewModel.changePasscode(pin) }
                         )
                     }
                     SettingsSection.INTEGRATIONS -> {

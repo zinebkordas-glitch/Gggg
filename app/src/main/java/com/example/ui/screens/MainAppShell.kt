@@ -61,13 +61,15 @@ val LocalTopBarContent = compositionLocalOf<MutableState<(@Composable () -> Unit
 
 val LocalHazeState = compositionLocalOf<HazeState?> { null }
 
-private fun getScreenHierarchyOrder(screen: ScreenState): Int {
+private fun getTabOrder(screen: ScreenState): Int? {
     return when (screen) {
-        is ScreenState.Home, is ScreenState.Bookmarks, is ScreenState.AddEditLink -> 0
-        is ScreenState.Actors, is ScreenState.AddEditActor, is ScreenState.ActorScenes -> 1
-        is ScreenState.Studios, is ScreenState.AddEditStudio, is ScreenState.StudioScenes -> 2
-        is ScreenState.StashDb -> 3
-        is ScreenState.Settings -> 4
+        is ScreenState.Home -> 0
+        is ScreenState.Bookmarks -> 1
+        is ScreenState.Actors, is ScreenState.ActorScenes -> 2
+        is ScreenState.Studios, is ScreenState.StudioScenes -> 3
+        is ScreenState.StashDb -> 4
+        is ScreenState.Settings -> 5
+        else -> null
     }
 }
 
@@ -118,12 +120,6 @@ fun MainAppShell(viewModel: MainViewModel) {
         } else {
             onDispose { }
         }
-    }
-
-    // Smooth App Launch Entrance Animation (Matches Add Scene motion)
-    var appEntranceVisible by remember { mutableStateOf(false) }
-    LaunchedEffect(Unit) {
-        appEntranceVisible = true
     }
 
     // Handle back button press
@@ -374,88 +370,122 @@ fun MainAppShell(viewModel: MainViewModel) {
             Box(
                 modifier = Modifier.fillMaxSize()
             ) {
-                AnimatedVisibility(
-                    visible = appEntranceVisible,
-                    enter = slideInVertically(
-                        animationSpec = tween(340, easing = FastOutSlowInEasing)
-                    ) { fullHeight -> fullHeight / 5 } + fadeIn(animationSpec = tween(300)),
+                val openDrawerLambda: () -> Unit = { coroutineScope.launch { drawerState.open() } }
+
+                AnimatedContent(
+                    targetState = currentScreen,
                     modifier = Modifier
                         .fillMaxSize()
-                        .haze(hazeState)
-                ) {
-                    val openDrawerLambda: () -> Unit = { coroutineScope.launch { drawerState.open() } }
+                        .haze(hazeState),
+                    transitionSpec = {
+                        val isActorDialogTransition = (initialState is ScreenState.Actors && targetState is ScreenState.AddEditActor) ||
+                                (initialState is ScreenState.AddEditActor && targetState is ScreenState.Actors)
+                        val isStudioDialogTransition = (initialState is ScreenState.Studios && targetState is ScreenState.AddEditStudio) ||
+                                (initialState is ScreenState.AddEditStudio && targetState is ScreenState.Studios)
 
-                    AnimatedContent(
-                        targetState = currentScreen,
-                        transitionSpec = {
-                            val initialOrder = getScreenHierarchyOrder(initialState)
-                            val targetOrder = getScreenHierarchyOrder(targetState)
+                        if (isActorDialogTransition || isStudioDialogTransition) {
+                            EnterTransition.None togetherWith ExitTransition.None
+                        } else if (targetState is ScreenState.AddEditLink) {
+                            // Modal Full-Screen Creation Entrance
+                            (slideInVertically(
+                                animationSpec = tween(320, easing = FastOutSlowInEasing)
+                            ) { height -> height } + fadeIn(
+                                animationSpec = tween(240, easing = LinearOutSlowInEasing)
+                            )).togetherWith(
+                                slideOutVertically(
+                                    animationSpec = tween(320, easing = FastOutSlowInEasing)
+                                ) { height -> -height / 8 } + fadeOut(
+                                    animationSpec = tween(220, easing = FastOutLinearInEasing)
+                                )
+                            ).apply {
+                                targetContentZIndex = 2f
+                            }
+                        } else if (initialState is ScreenState.AddEditLink) {
+                            // Modal Full-Screen Creation Exit
+                            (slideInVertically(
+                                animationSpec = tween(300, easing = FastOutSlowInEasing)
+                            ) { height -> -height / 8 } + fadeIn(
+                                animationSpec = tween(220, easing = LinearOutSlowInEasing)
+                            )).togetherWith(
+                                slideOutVertically(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) { height -> height } + fadeOut(
+                                    animationSpec = tween(220, easing = FastOutLinearInEasing)
+                                )
+                            ).apply {
+                                targetContentZIndex = 0f
+                            }
+                        } else {
+                            val initialTab = getTabOrder(initialState)
+                            val targetTab = getTabOrder(targetState)
                             val isBack = if (navDirection == MainViewModel.NavigationDirection.BACK) {
                                 true
-                            } else if (initialOrder != targetOrder) {
-                                targetOrder < initialOrder
+                            } else if (initialTab != null && targetTab != null && initialTab != targetTab) {
+                                targetTab < initialTab
                             } else {
                                 navDirection == MainViewModel.NavigationDirection.BACK
                             }
 
                             if (isBack) {
                                 (slideInHorizontally(
-                                    animationSpec = tween(320, easing = FastOutSlowInEasing)
-                                ) { width -> -width / 3 } + fadeIn(
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                ) { width -> -width / 4 } + fadeIn(
                                     animationSpec = tween(220, easing = LinearOutSlowInEasing)
                                 )).togetherWith(
                                     slideOutHorizontally(
-                                        animationSpec = tween(320, easing = FastOutSlowInEasing)
-                                    ) { width -> width }
+                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                    ) { width -> width } + fadeOut(
+                                        animationSpec = tween(220, easing = FastOutLinearInEasing)
+                                    )
                                 ).apply {
                                     targetContentZIndex = 0f
                                 }
                             } else {
                                 (slideInHorizontally(
-                                    animationSpec = tween(320, easing = FastOutSlowInEasing)
+                                    animationSpec = tween(300, easing = FastOutSlowInEasing)
                                 ) { width -> width } + fadeIn(
                                     animationSpec = tween(220, easing = LinearOutSlowInEasing)
                                 )).togetherWith(
                                     slideOutHorizontally(
-                                        animationSpec = tween(320, easing = FastOutSlowInEasing)
-                                    ) { width -> -width / 3 } + fadeOut(
-                                        animationSpec = tween(200, easing = FastOutLinearInEasing)
+                                        animationSpec = tween(300, easing = FastOutSlowInEasing)
+                                    ) { width -> -width / 4 } + fadeOut(
+                                        animationSpec = tween(220, easing = FastOutLinearInEasing)
                                     )
                                 ).apply {
                                     targetContentZIndex = 1f
                                 }
                             }
-                        },
-                        label = "screen_motion_transition"
-                    ) { screen ->
-                        when (screen) {
-                            is ScreenState.Home -> HomeScreen(
-                                viewModel = viewModel,
-                                onOpenDrawer = openDrawerLambda
-                            )
-                            is ScreenState.Bookmarks -> BookmarksScreen(
-                                viewModel = viewModel,
-                                onOpenDrawer = openDrawerLambda
-                            )
-                            is ScreenState.AddEditLink -> AddEditLinkScreen(viewModel, screen.linkId)
-                            is ScreenState.Actors -> ActorManagementScreen(viewModel)
-                            is ScreenState.AddEditActor -> ActorManagementScreen(viewModel)
-                            is ScreenState.ActorScenes -> HomeScreen(
-                                viewModel = viewModel,
-                                onOpenDrawer = openDrawerLambda
-                            )
-                            is ScreenState.Studios -> StudioManagementScreen(viewModel)
-                            is ScreenState.AddEditStudio -> StudioManagementScreen(viewModel)
-                            is ScreenState.StudioScenes -> HomeScreen(
-                                viewModel = viewModel,
-                                onOpenDrawer = openDrawerLambda
-                            )
-                            is ScreenState.StashDb -> StashDbScreen(
-                                viewModel = viewModel,
-                                onOpenDrawer = openDrawerLambda
-                            )
-                            is ScreenState.Settings -> SettingsScreen(viewModel)
                         }
+                    },
+                    label = "screen_motion_transition"
+                ) { screen ->
+                    when (screen) {
+                        is ScreenState.Home -> HomeScreen(
+                            viewModel = viewModel,
+                            onOpenDrawer = openDrawerLambda
+                        )
+                        is ScreenState.Bookmarks -> BookmarksScreen(
+                            viewModel = viewModel,
+                            onOpenDrawer = openDrawerLambda
+                        )
+                        is ScreenState.AddEditLink -> AddEditLinkScreen(viewModel, screen.linkId)
+                        is ScreenState.Actors -> ActorManagementScreen(viewModel)
+                        is ScreenState.AddEditActor -> ActorManagementScreen(viewModel)
+                        is ScreenState.ActorScenes -> HomeScreen(
+                            viewModel = viewModel,
+                            onOpenDrawer = openDrawerLambda
+                        )
+                        is ScreenState.Studios -> StudioManagementScreen(viewModel)
+                        is ScreenState.AddEditStudio -> StudioManagementScreen(viewModel)
+                        is ScreenState.StudioScenes -> HomeScreen(
+                            viewModel = viewModel,
+                            onOpenDrawer = openDrawerLambda
+                        )
+                        is ScreenState.StashDb -> StashDbScreen(
+                            viewModel = viewModel,
+                            onOpenDrawer = openDrawerLambda
+                        )
+                        is ScreenState.Settings -> SettingsScreen(viewModel)
                     }
                 }
 
@@ -479,8 +509,8 @@ fun MainAppShell(viewModel: MainViewModel) {
 
                 AnimatedVisibility(
                     visible = shouldShowBottomBar,
-                    enter = slideInVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { it } + fadeIn(animationSpec = tween(200)),
-                    exit = slideOutVertically(animationSpec = tween(260, easing = FastOutSlowInEasing)) { it } + fadeOut(animationSpec = tween(200)),
+                    enter = slideInVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { it } + fadeIn(animationSpec = tween(220)),
+                    exit = slideOutVertically(animationSpec = tween(300, easing = FastOutSlowInEasing)) { it } + fadeOut(animationSpec = tween(220)),
                     modifier = Modifier.align(Alignment.BottomCenter)
                 ) {
                     LiquidGlassNavigationBar(
@@ -488,21 +518,32 @@ fun MainAppShell(viewModel: MainViewModel) {
                         hazeState = hazeState,
                         onItemSelected = { item ->
                             viewModel.navigateTo(item.targetScreen)
-                        }
+                        },
+                        barHeightDp = currentSettings.navBarHeightDp,
+                        transparency = currentSettings.navBarTransparency,
+                        blurRadiusDp = currentSettings.navBarBlurDp
                     )
                 }
 
-                // GoPlayer / ExoPlayer Video Player Overlay
-                activeVideo?.let { video ->
-                    GoPlayer(
-                        title = video.title,
-                        qualities = video.qualities,
-                        defaultHeaders = video.headers,
-                        initialPositionMs = video.initialPositionMs,
-                        startInLandscape = video.startInLandscape,
-                        exoPlayer = viewModel.sharedPlayerManager.getPlayer(),
-                        onClose = { viewModel.closeVideo() }
-                    )
+                // GoPlayer / ExoPlayer Video Player Overlay with smooth cinematic entrance
+                AnimatedVisibility(
+                    visible = activeVideo != null,
+                    enter = fadeIn(animationSpec = tween(240, easing = FastOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.94f, animationSpec = tween(240, easing = FastOutSlowInEasing)),
+                    exit = fadeOut(animationSpec = tween(200, easing = FastOutLinearInEasing)) +
+                            scaleOut(targetScale = 0.95f, animationSpec = tween(200, easing = FastOutLinearInEasing))
+                ) {
+                    activeVideo?.let { video ->
+                        GoPlayer(
+                            title = video.title,
+                            qualities = video.qualities,
+                            defaultHeaders = video.headers,
+                            initialPositionMs = video.initialPositionMs,
+                            startInLandscape = video.startInLandscape,
+                            exoPlayer = viewModel.sharedPlayerManager.getPlayer(),
+                            onClose = { viewModel.closeVideo() }
+                        )
+                    }
                 }
 
                 // Video Resolving / Debrid Progress Overlay (Only for non-card actions, cards handle inline)

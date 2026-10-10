@@ -15,10 +15,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.ui.MainViewModel
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.Alignment
+import com.example.ui.components.AppLockScreen
 import com.example.ui.screens.LoadingScreen
 import com.example.ui.screens.MainAppShell
 import com.example.ui.theme.GoonyTheme
@@ -69,6 +77,7 @@ class MainActivity : ComponentActivity() {
             }
 
             val isAppResourcesLoading by viewModel.isAppResourcesLoading.collectAsStateWithLifecycle()
+            val isAppLocked by viewModel.isAppLocked.collectAsStateWithLifecycle()
 
             GoonyTheme(
                 paletteName = safeSettings.currentTheme,
@@ -76,18 +85,40 @@ class MainActivity : ComponentActivity() {
                 betaTestPrivacy = safeSettings.betaTestPrivacy
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
-                    AnimatedContent(
-                        targetState = isAppResourcesLoading,
-                        transitionSpec = {
-                            fadeIn(animationSpec = tween(350)) togetherWith
-                                    fadeOut(animationSpec = tween(400))
-                        },
-                        label = "RootAppLaunchTransition"
-                    ) { loading ->
-                        if (loading) {
-                            LoadingScreen()
-                        } else {
-                            MainAppShell(viewModel = viewModel)
+                    Box(modifier = Modifier.fillMaxSize()) {
+                        AnimatedContent(
+                            targetState = isAppResourcesLoading,
+                            transitionSpec = {
+                                if (!targetState) {
+                                    (fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing)) +
+                                            scaleIn(initialScale = 0.96f, animationSpec = tween(380, easing = FastOutSlowInEasing)))
+                                        .togetherWith(
+                                            fadeOut(animationSpec = tween(260, easing = FastOutLinearInEasing))
+                                        )
+                                } else {
+                                    fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(250))
+                                }
+                            },
+                            label = "RootAppLaunchTransition"
+                        ) { loading ->
+                            if (loading) {
+                                LoadingScreen()
+                            } else {
+                                MainAppShell(viewModel = viewModel)
+                            }
+                        }
+
+                        // App Lock Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = isAppLocked && !isAppResourcesLoading,
+                            enter = fadeIn(animationSpec = tween(250)) + scaleIn(initialScale = 0.95f, animationSpec = tween(250)),
+                            exit = fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 1.05f, animationSpec = tween(220))
+                        ) {
+                            AppLockScreen(
+                                onUnlock = { pin ->
+                                    viewModel.unlockApp(pin)
+                                }
+                            )
                         }
                     }
                 }

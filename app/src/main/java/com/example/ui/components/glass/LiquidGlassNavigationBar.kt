@@ -52,7 +52,10 @@ fun LiquidGlassNavigationBar(
     onItemSelected: (LiquidGlassNavItem) -> Unit,
     modifier: Modifier = Modifier,
     hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
-    onItemLongPressed: ((LiquidGlassNavItem) -> Unit)? = null
+    onItemLongPressed: ((LiquidGlassNavItem) -> Unit)? = null,
+    barHeightDp: Int = 64,
+    transparency: Float = 0.65f,
+    blurRadiusDp: Int = 24
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
@@ -76,8 +79,9 @@ fun LiquidGlassNavigationBar(
     }
     val hasValidSelection = selectedIndex >= 0
 
-    val barHeight = if (isLandscape) 52.dp else 64.dp
-    val barCornerRadius = if (isLandscape) 26.dp else 32.dp
+    val safeHeight = barHeightDp.coerceIn(48, 80)
+    val barHeight = if (isLandscape) (safeHeight * 0.82f).dp else safeHeight.dp
+    val barCornerRadius = barHeight / 2
     val barShape = RoundedCornerShape(barCornerRadius)
 
     val unselectedItemColor = if (isDark) {
@@ -123,6 +127,8 @@ fun LiquidGlassNavigationBar(
                 isDark = isDark,
                 accentColor = accent,
                 hazeState = hazeState,
+                blurRadius = blurRadiusDp.coerceIn(0, 40).dp,
+                transparency = transparency.coerceIn(0f, 1f),
                 modifier = Modifier.fillMaxSize()
             )
 

@@ -20,6 +20,7 @@ import androidx.compose.ui.unit.dp
 
 val LocalGoonyPalette = compositionLocalOf<GoonyThemePalette> { GoonyThemePalette.Dark }
 val LocalVaultPalette = LocalGoonyPalette
+typealias VaultPalette = GoonyThemePalette
 val LocalAccentColor = compositionLocalOf { Color(0xFF7C4DFF) }
 val LocalBetaTestPrivacy = compositionLocalOf { false }
 

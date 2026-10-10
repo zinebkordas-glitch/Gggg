@@ -16,7 +16,7 @@ import com.example.data.local.entity.*
         StudioEntity::class,
         SettingsEntity::class
     ],
-    version = 12,
+    version = 14,
     exportSchema = false
 )
 @TypeConverters(RoomConverters::class)
@@ -36,6 +36,21 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_12_13 = object : androidx.room.migration.Migration(12, 13) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN navBarHeightDp INTEGER NOT NULL DEFAULT 64")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN navBarTransparency REAL NOT NULL DEFAULT 0.65")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN navBarBlurDp INTEGER NOT NULL DEFAULT 24")
+            }
+        }
+
+        private val MIGRATION_13_14 = object : androidx.room.migration.Migration(13, 14) {
+            override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN isPasscodeEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE app_settings ADD COLUMN passcodeHash TEXT NOT NULL DEFAULT ''")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return INSTANCE ?: synchronized(this) {
                 val instance = Room.databaseBuilder(
@@ -43,7 +58,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "goony_database"
                 )
-                    .addMigrations(MIGRATION_6_7)
+                    .addMigrations(MIGRATION_6_7, MIGRATION_12_13, MIGRATION_13_14)
                     .fallbackToDestructiveMigration(true)
                     .build()
                 INSTANCE = instance
