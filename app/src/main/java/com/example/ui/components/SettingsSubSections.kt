@@ -142,12 +142,12 @@ fun SettingsDisplaySection(
     onShowManagementCardsChange: (Boolean) -> Unit,
     enableVideoPlayerGestures: Boolean,
     onEnableVideoPlayerGesturesChange: (Boolean) -> Unit,
-    navBarHeightDp: Int = 64,
-    onNavBarHeightDpChange: (Int) -> Unit = {},
     navBarTransparency: Float = 0.65f,
     onNavBarTransparencyChange: (Float) -> Unit = {},
     navBarBlurDp: Int = 24,
-    onNavBarBlurDpChange: (Int) -> Unit = {}
+    onNavBarBlurDpChange: (Int) -> Unit = {},
+    navBarActiveTabBlurDp: Int = 16,
+    onNavBarActiveTabBlurDpChange: (Int) -> Unit = {}
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
@@ -188,7 +188,7 @@ fun SettingsDisplaySection(
             }
         }
 
-        // Navigation Bar Controls: Height (dp), Transparency (%), and Blur (dp)
+        // Navigation Bar Controls: Transparency (%), Background Blur (dp), and Active Tab Blur (dp)
         GroupedCard {
             Column(
                 modifier = Modifier.padding(20.dp),
@@ -204,7 +204,7 @@ fun SettingsDisplaySection(
                         color = palette.textPrimary
                     )
                     Text(
-                        "Floating glass size, height (dp) & transparency",
+                        "Floating glass transparency & blur controls",
                         style = MaterialTheme.typography.bodySmall,
                         color = palette.textSecondary
                     )
@@ -212,23 +212,7 @@ fun SettingsDisplaySection(
 
                 HorizontalDivider(color = palette.border.copy(alpha = 0.4f))
 
-                // 1. Navigation Bar Height in dp
-                NavBarSliderCard(
-                    title = "Height",
-                    rangeHint = "Min 48 dp • Max 80 dp",
-                    valueDisplay = "$navBarHeightDp dp",
-                    icon = Icons.Outlined.SwapVert,
-                    value = navBarHeightDp.toFloat(),
-                    valueRange = 48f..80f,
-                    onValueChange = { onNavBarHeightDpChange(it.toInt().coerceIn(48, 80)) },
-                    onStepDecrease = { onNavBarHeightDpChange((navBarHeightDp - 2).coerceAtLeast(48)) },
-                    onStepIncrease = { onNavBarHeightDpChange((navBarHeightDp + 2).coerceAtMost(80)) },
-                    testTag = "navbar_height_slider",
-                    accent = accent,
-                    palette = palette
-                )
-
-                // 2. Navigation Bar Transparency percentage
+                // 1. Navigation Bar Transparency percentage
                 NavBarSliderCard(
                     title = "Transparency",
                     rangeHint = "Min 0% • Max 100%",
@@ -237,31 +221,35 @@ fun SettingsDisplaySection(
                     value = navBarTransparency,
                     valueRange = 0f..1f,
                     onValueChange = { onNavBarTransparencyChange(it.coerceIn(0f, 1f)) },
-                    onStepDecrease = {
-                        val currentPct = (navBarTransparency * 100).toInt()
-                        onNavBarTransparencyChange((currentPct - 5).coerceAtLeast(0) / 100f)
-                    },
-                    onStepIncrease = {
-                        val currentPct = (navBarTransparency * 100).toInt()
-                        onNavBarTransparencyChange((currentPct + 5).coerceAtMost(100) / 100f)
-                    },
                     testTag = "navbar_transparency_slider",
                     accent = accent,
                     palette = palette
                 )
 
-                // 3. Navigation Bar Blur Radius in dp
+                // 2. Navigation Bar Blur Radius in dp
                 NavBarSliderCard(
-                    title = "Blur Radius",
+                    title = "Background Blur",
                     rangeHint = "Min 0 dp • Max 40 dp",
                     valueDisplay = "$navBarBlurDp dp",
                     icon = Icons.Outlined.BlurOn,
                     value = navBarBlurDp.toFloat(),
                     valueRange = 0f..40f,
                     onValueChange = { onNavBarBlurDpChange(it.toInt().coerceIn(0, 40)) },
-                    onStepDecrease = { onNavBarBlurDpChange((navBarBlurDp - 2).coerceAtLeast(0)) },
-                    onStepIncrease = { onNavBarBlurDpChange((navBarBlurDp + 2).coerceAtMost(40)) },
                     testTag = "navbar_blur_slider",
+                    accent = accent,
+                    palette = palette
+                )
+
+                // 3. Active Tab Blur in dp
+                NavBarSliderCard(
+                    title = "Active Tab Blur",
+                    rangeHint = "Min 0 dp • Max 40 dp",
+                    valueDisplay = "$navBarActiveTabBlurDp dp",
+                    icon = Icons.Outlined.AutoAwesome,
+                    value = navBarActiveTabBlurDp.toFloat(),
+                    valueRange = 0f..40f,
+                    onValueChange = { onNavBarActiveTabBlurDpChange(it.toInt().coerceIn(0, 40)) },
+                    testTag = "navbar_active_tab_blur_slider",
                     accent = accent,
                     palette = palette
                 )
@@ -498,8 +486,6 @@ private fun NavBarSliderCard(
     value: Float,
     valueRange: ClosedFloatingPointRange<Float>,
     onValueChange: (Float) -> Unit,
-    onStepDecrease: () -> Unit,
-    onStepIncrease: () -> Unit,
     testTag: String,
     accent: Color,
     palette: VaultPalette
@@ -573,65 +559,24 @@ private fun NavBarSliderCard(
                 }
             }
 
-            // Slider Row with Step Decrement / Increment buttons
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            // Slider Track
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 2.dp, vertical = 2.dp)
             ) {
-                // Micro decrease button (-)
-                Surface(
-                    shape = CircleShape,
-                    color = palette.border.copy(alpha = 0.22f),
-                    border = BorderStroke(1.dp, palette.border.copy(alpha = 0.35f)),
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .clickable { onStepDecrease() }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "−",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.textPrimary
-                        )
-                    }
-                }
-
-                // Smooth Fluid Slider
                 SmoothFluidSlider(
                     value = value,
                     onValueChange = onValueChange,
                     valueRange = valueRange,
                     activeColor = accent,
                     inactiveTrackColor = palette.border.copy(alpha = 0.4f),
-                    trackHeight = 12.dp,
+                    trackHeight = 10.dp,
                     thumbDiameter = 22.dp,
-                    expandedThumbDiameter = 28.dp,
+                    expandedThumbDiameter = 26.dp,
                     testTag = testTag,
-                    modifier = Modifier.weight(1f)
+                    modifier = Modifier.fillMaxWidth()
                 )
-
-                // Micro increase button (+)
-                Surface(
-                    shape = CircleShape,
-                    color = palette.border.copy(alpha = 0.22f),
-                    border = BorderStroke(1.dp, palette.border.copy(alpha = 0.35f)),
-                    modifier = Modifier
-                        .size(34.dp)
-                        .clip(CircleShape)
-                        .clickable { onStepIncrease() }
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = "+",
-                            fontSize = 17.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = palette.textPrimary
-                        )
-                    }
-                }
             }
         }
     }

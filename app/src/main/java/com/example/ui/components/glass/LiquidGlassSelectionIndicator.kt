@@ -23,12 +23,18 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlin.math.abs
 
+import androidx.compose.ui.draw.blur
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeChild
+
 /**
- * Pure Liquid Glass Selection Indicator with Gesture Motion Support.
+ * Pure Liquid Glass Selection Indicator with Gesture Motion Support & Active Tab Blur.
  *
  * Implements:
  * - Perfectly circular, harmonious pill shape (RoundedCornerShape(percent = 50)).
- * - Pure translucent glass gradient without artificial top glares or flares.
+ * - Dynamic customizable backdrop blur & translucent glass gradient.
  * - Reactive liquid elastic pulse animation on gesture / long-press.
  * - Zero re-layout overhead (uses graphicsLayer translationX & scaleX).
  */
@@ -41,7 +47,9 @@ fun LiquidGlassSelectionIndicator(
     isDarkTheme: Boolean,
     modifier: Modifier = Modifier,
     isVisible: Boolean = true,
-    pulseTrigger: Int = 0
+    pulseTrigger: Int = 0,
+    hazeState: HazeState? = null,
+    blurRadius: Dp = 16.dp
 ) {
     val positionAnim = remember { Animatable(targetCenterX) }
     val stretchAnim = remember { Animatable(1.0f) }
@@ -150,6 +158,23 @@ fun LiquidGlassSelectionIndicator(
         }
     )
 
+    val effectiveBlurRadius = blurRadius.coerceIn(0.dp, 40.dp)
+    val indicatorHazeStyle = remember(isDarkTheme, effectiveBlurRadius, accentColor) {
+        HazeStyle(
+            backgroundColor = if (isDarkTheme) Color.Black.copy(alpha = 0.20f) else Color.White.copy(alpha = 0.35f),
+            tints = listOf(
+                HazeTint(
+                    color = if (isDarkTheme) Color.White.copy(alpha = 0.12f) else Color.White.copy(alpha = 0.45f)
+                ),
+                HazeTint(
+                    color = accentColor.copy(alpha = 0.08f)
+                )
+            ),
+            blurRadius = effectiveBlurRadius,
+            noiseFactor = 0.02f
+        )
+    }
+
     Box(
         modifier = modifier
             .graphicsLayer {
@@ -161,6 +186,19 @@ fun LiquidGlassSelectionIndicator(
             .width(baseWidth)
             .height(height)
             .clip(pillShape)
+            .then(
+                if (hazeState != null && effectiveBlurRadius > 0.dp) {
+                    Modifier.hazeChild(
+                        state = hazeState,
+                        shape = pillShape,
+                        style = indicatorHazeStyle
+                    )
+                } else if (effectiveBlurRadius > 0.dp) {
+                    Modifier.blur(effectiveBlurRadius)
+                } else {
+                    Modifier
+                }
+            )
             .background(Brush.verticalGradient(glassIndicatorGradient))
             .border(
                 width = 1.dp,

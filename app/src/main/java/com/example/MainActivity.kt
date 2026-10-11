@@ -38,6 +38,12 @@ import coil.decode.SvgDecoder
 import com.example.network.NetworkClient
 import com.example.ui.ScreenState
 
+enum class AppRootState {
+    LOADING,
+    LOCKED,
+    AUTHENTICATED
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -86,39 +92,56 @@ class MainActivity : ComponentActivity() {
             ) {
                 Surface(modifier = Modifier.fillMaxSize()) {
                     Box(modifier = Modifier.fillMaxSize()) {
+                        // Zero-Leak Root State Management: Loading -> (AppLocked | MainAppShell)
+                        // MainAppShell is NEVER composed or rendered while isAppLocked is true.
                         AnimatedContent(
-                            targetState = isAppResourcesLoading,
+                            targetState = when {
+                                isAppResourcesLoading -> AppRootState.LOADING
+                                isAppLocked -> AppRootState.LOCKED
+                                else -> AppRootState.AUTHENTICATED
+                            },
                             transitionSpec = {
-                                if (!targetState) {
-                                    (fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing)) +
-                                            scaleIn(initialScale = 0.96f, animationSpec = tween(380, easing = FastOutSlowInEasing)))
-                                        .togetherWith(
-                                            fadeOut(animationSpec = tween(260, easing = FastOutLinearInEasing))
-                                        )
-                                } else {
-                                    fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(250))
+                                when {
+                                    initialState == AppRootState.LOADING && targetState == AppRootState.LOCKED -> {
+                                        fadeIn(animationSpec = tween(280)) togetherWith fadeOut(animationSpec = tween(200))
+                                    }
+                                    initialState == AppRootState.LOCKED && targetState == AppRootState.AUTHENTICATED -> {
+                                        (fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing)) +
+                                                scaleIn(initialScale = 0.96f, animationSpec = tween(380, easing = FastOutSlowInEasing)))
+                                            .togetherWith(
+                                                fadeOut(animationSpec = tween(220, easing = FastOutLinearInEasing)) +
+                                                        scaleOut(targetScale = 1.04f, animationSpec = tween(220))
+                                            )
+                                    }
+                                    initialState == AppRootState.LOADING && targetState == AppRootState.AUTHENTICATED -> {
+                                        (fadeIn(animationSpec = tween(380, easing = FastOutSlowInEasing)) +
+                                                scaleIn(initialScale = 0.96f, animationSpec = tween(380, easing = FastOutSlowInEasing)))
+                                            .togetherWith(
+                                                fadeOut(animationSpec = tween(260, easing = FastOutLinearInEasing))
+                                            )
+                                    }
+                                    else -> {
+                                        fadeIn(animationSpec = tween(250)) togetherWith fadeOut(animationSpec = tween(250))
+                                    }
                                 }
                             },
-                            label = "RootAppLaunchTransition"
-                        ) { loading ->
-                            if (loading) {
-                                LoadingScreen()
-                            } else {
-                                MainAppShell(viewModel = viewModel)
-                            }
-                        }
-
-                        // App Lock Overlay
-                        androidx.compose.animation.AnimatedVisibility(
-                            visible = isAppLocked && !isAppResourcesLoading,
-                            enter = fadeIn(animationSpec = tween(250)) + scaleIn(initialScale = 0.95f, animationSpec = tween(250)),
-                            exit = fadeOut(animationSpec = tween(220)) + scaleOut(targetScale = 1.05f, animationSpec = tween(220))
-                        ) {
-                            AppLockScreen(
-                                onUnlock = { pin ->
-                                    viewModel.unlockApp(pin)
+                            label = "RootSecurityAndAppTransition"
+                        ) { state ->
+                            when (state) {
+                                AppRootState.LOADING -> {
+                                    LoadingScreen()
                                 }
-                            )
+                                AppRootState.LOCKED -> {
+                                    AppLockScreen(
+                                        onUnlock = { pin ->
+                                            viewModel.unlockApp(pin)
+                                        }
+                                    )
+                                }
+                                AppRootState.AUTHENTICATED -> {
+                                    MainAppShell(viewModel = viewModel)
+                                }
+                            }
                         }
                     }
                 }

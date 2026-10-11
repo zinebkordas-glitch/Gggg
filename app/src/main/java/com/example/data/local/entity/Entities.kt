@@ -82,9 +82,10 @@ data class SettingsEntity(
     val enableStudioFilter: Boolean = true,
     val blockedStudioNames: List<String> = emptyList(),
     val blockedStudioIds: List<String> = emptyList(),
-    val navBarHeightDp: Int = 64,
+    val navBarHeightDp: Int = 70,
     val navBarTransparency: Float = 0.65f,
     val navBarBlurDp: Int = 24,
+    val navBarActiveTabBlurDp: Int = 16,
     val isPasscodeEnabled: Boolean = false,
     val passcodeHash: String = ""
 )

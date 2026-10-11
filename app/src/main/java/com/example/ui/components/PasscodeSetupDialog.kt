@@ -19,7 +19,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -27,10 +30,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.filled.*
+import com.example.R
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.launch
 
 enum class PasscodeDialogMode {
@@ -263,6 +266,10 @@ fun PasscodeSetupDialog(
 
                 Spacer(modifier = Modifier.height(32.dp))
 
+                // Button background: #353638 in Dark theme mode, otherwise palette.cardBg
+                val isDarkTheme = palette.name != "Light"
+                val keypadButtonBg = if (isDarkTheme) Color(0xFF353638) else palette.cardBg
+
                 // Keypad
                 val rows = listOf(
                     listOf("1", "2", "3"),
@@ -293,12 +300,14 @@ fun PasscodeSetupDialog(
                                                     indication = ripple(bounded = true)
                                                 ) { onDel() },
                                             shape = CircleShape,
-                                            color = palette.bg.copy(alpha = 0.4f),
-                                            border = BorderStroke(1.dp, palette.border.copy(alpha = 0.2f))
+                                            color = keypadButtonBg
                                         ) {
-                                            Box(contentAlignment = Alignment.Center) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Icon(
-                                                    imageVector = Icons.Outlined.Backspace,
+                                                    painter = painterResource(R.drawable.ic_lock_backspace),
                                                     contentDescription = "Backspace",
                                                     tint = palette.textPrimary,
                                                     modifier = Modifier.size(24.dp)
@@ -317,14 +326,25 @@ fun PasscodeSetupDialog(
                                                 ) { onDigit(btn) }
                                                 .testTag("dialog_keypad_$btn"),
                                             shape = CircleShape,
-                                            color = palette.bg.copy(alpha = 0.6f),
-                                            border = BorderStroke(1.dp, palette.border.copy(alpha = 0.3f))
+                                            color = keypadButtonBg
                                         ) {
-                                            Box(contentAlignment = Alignment.Center) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Text(
                                                     text = btn,
-                                                    style = MaterialTheme.typography.titleLarge,
+                                                    style = MaterialTheme.typography.titleLarge.copy(
+                                                        platformStyle = PlatformTextStyle(
+                                                            includeFontPadding = false
+                                                        ),
+                                                        lineHeightStyle = LineHeightStyle(
+                                                            alignment = LineHeightStyle.Alignment.Center,
+                                                            trim = LineHeightStyle.Trim.Both
+                                                        )
+                                                    ),
                                                     fontWeight = FontWeight.SemiBold,
+                                                    textAlign = TextAlign.Center,
                                                     color = palette.textPrimary
                                                 )
                                             }

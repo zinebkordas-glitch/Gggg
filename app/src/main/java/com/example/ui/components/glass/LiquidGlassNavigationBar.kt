@@ -53,9 +53,10 @@ fun LiquidGlassNavigationBar(
     modifier: Modifier = Modifier,
     hazeState: dev.chrisbanes.haze.HazeState? = LocalHazeState.current,
     onItemLongPressed: ((LiquidGlassNavItem) -> Unit)? = null,
-    barHeightDp: Int = 64,
+    barHeightDp: Int = 70,
     transparency: Float = 0.65f,
-    blurRadiusDp: Int = 24
+    blurRadiusDp: Int = 24,
+    activeTabBlurDp: Int = 16
 ) {
     val palette = LocalVaultPalette.current
     val accent = LocalAccentColor.current
@@ -147,6 +148,8 @@ fun LiquidGlassNavigationBar(
                     isDarkTheme = isDark,
                     isVisible = hasValidSelection,
                     pulseTrigger = pulseTrigger,
+                    hazeState = hazeState,
+                    blurRadius = activeTabBlurDp.dp,
                     modifier = Modifier.align(Alignment.CenterStart)
                 )
             }

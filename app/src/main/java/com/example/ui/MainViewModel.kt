@@ -232,6 +232,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 } catch (_: Exception) {}
             }
 
+            // 6. Security Gate: Verify passcode status BEFORE dismissing loading screen to prevent any UI leakage
+            try {
+                val latestSettings = repository.settings.first() ?: SettingsEntity()
+                if (latestSettings.isPasscodeEnabled && latestSettings.passcodeHash.isNotBlank()) {
+                    if (!_hasUnlockedThisSession) {
+                        _isAppLocked.value = true
+                    }
+                }
+            } catch (_: Exception) {}
+
             delay(150L)
             _isAppResourcesLoading.value = false
         }

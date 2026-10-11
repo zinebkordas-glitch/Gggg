@@ -521,7 +521,8 @@ fun MainAppShell(viewModel: MainViewModel) {
                         },
                         barHeightDp = currentSettings.navBarHeightDp,
                         transparency = currentSettings.navBarTransparency,
-                        blurRadiusDp = currentSettings.navBarBlurDp
+                        blurRadiusDp = currentSettings.navBarBlurDp,
+                        activeTabBlurDp = currentSettings.navBarActiveTabBlurDp
                     )
                 }
 

@@ -204,10 +204,6 @@ fun SettingsScreen(
                             onEnableVideoPlayerGesturesChange = {
                                 viewModel.updateSettings(currentSettings.copy(enableVideoPlayerGestures = it))
                             },
-                            navBarHeightDp = currentSettings.navBarHeightDp,
-                            onNavBarHeightDpChange = {
-                                viewModel.updateSettings(currentSettings.copy(navBarHeightDp = it))
-                            },
                             navBarTransparency = currentSettings.navBarTransparency,
                             onNavBarTransparencyChange = {
                                 viewModel.updateSettings(currentSettings.copy(navBarTransparency = it))
@@ -215,6 +211,10 @@ fun SettingsScreen(
                             navBarBlurDp = currentSettings.navBarBlurDp,
                             onNavBarBlurDpChange = {
                                 viewModel.updateSettings(currentSettings.copy(navBarBlurDp = it))
+                            },
+                            navBarActiveTabBlurDp = currentSettings.navBarActiveTabBlurDp,
+                            onNavBarActiveTabBlurDpChange = {
+                                viewModel.updateSettings(currentSettings.copy(navBarActiveTabBlurDp = it))
                             }
                         )
                     }
@@ -401,22 +401,6 @@ fun SettingsScreen(
                     }
                 }
             }
-
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = padding.calculateTopPadding())
-                    .height(18.dp)
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                palette.surface,
-                                palette.surface.copy(alpha = 0.5f),
-                                Color.Transparent
-                            )
-                        )
-                    )
-            )
         }
     }
 }

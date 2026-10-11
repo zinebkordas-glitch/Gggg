@@ -131,7 +131,7 @@ fun SleekSlimSlider(
 }
 
 /**
- * Ultra-smooth, tactile fluid slider with spring physics on press, continuous touch gesture tracking,
+ * Ultra-smooth, tactile fluid slider with continuous responsive touch tracking,
  * rounded capsule track, and glowing floating thumb.
  */
 @Composable
@@ -142,9 +142,9 @@ fun SmoothFluidSlider(
     modifier: Modifier = Modifier,
     activeColor: Color = MaterialTheme.colorScheme.primary,
     inactiveTrackColor: Color = MaterialTheme.colorScheme.surfaceVariant,
-    trackHeight: Dp = 12.dp,
+    trackHeight: Dp = 10.dp,
     thumbDiameter: Dp = 22.dp,
-    expandedThumbDiameter: Dp = 28.dp,
+    expandedThumbDiameter: Dp = 26.dp,
     testTag: String? = null
 ) {
     val currentOnValueChange by rememberUpdatedState(onValueChange)
@@ -155,14 +155,14 @@ fun SmoothFluidSlider(
     val animatedThumbDiameter by animateDpAsState(
         targetValue = if (isDragging) expandedThumbDiameter else thumbDiameter,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMediumLow
+            dampingRatio = Spring.DampingRatioNoBouncy,
+            stiffness = Spring.StiffnessMedium
         ),
         label = "fluid_thumb_diameter"
     )
     val animatedElevation by animateDpAsState(
-        targetValue = if (isDragging) 6.dp else 2.5.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        targetValue = if (isDragging) 6.dp else 2.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "fluid_thumb_elevation"
     )
 
@@ -178,11 +178,11 @@ fun SmoothFluidSlider(
     ) {
         val widthPx = constraints.maxWidth.toFloat()
         val density = LocalDensity.current
-        val maxThumbRadiusPx = with(density) { expandedThumbDiameter.toPx() / 2f }
-        val usableWidth = (widthPx - maxThumbRadiusPx * 2f).coerceAtLeast(1f)
+        val thumbRadiusPx = with(density) { thumbDiameter.toPx() / 2f }
+        val usableWidth = (widthPx - thumbRadiusPx * 2f).coerceAtLeast(1f)
 
         fun updateFromTouch(touchX: Float) {
-            val clamped = (touchX - maxThumbRadiusPx).coerceIn(0f, usableWidth)
+            val clamped = (touchX - thumbRadiusPx).coerceIn(0f, usableWidth)
             val newFraction = clamped / usableWidth
             val newValue = currentValueRange.start + newFraction * span
             currentOnValueChange(newValue)
@@ -191,13 +191,14 @@ fun SmoothFluidSlider(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .pointerInput(usableWidth) {
+                .pointerInput(usableWidth, span, currentValueRange.start) {
                     awaitEachGesture {
                         val down = awaitFirstDown(requireUnconsumed = false)
-                        down.consume()
                         isDragging = true
                         haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         updateFromTouch(down.position.x)
+                        down.consume()
+
                         while (true) {
                             val event = awaitPointerEvent()
                             val change = event.changes.firstOrNull { it.id == down.id } ?: break
@@ -210,19 +211,18 @@ fun SmoothFluidSlider(
                 },
             contentAlignment = Alignment.CenterStart
         ) {
-            // Inactive track: soft rounded capsule with subtle border
+            // Inactive track: soft rounded capsule
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(trackHeight)
                     .clip(CircleShape)
                     .background(inactiveTrackColor)
-                    .border(0.75.dp, inactiveTrackColor.copy(alpha = 0.5f), CircleShape)
             )
 
             // Active track: glowing liquid gradient pill
-            val thumbCenterPx = maxThumbRadiusPx + fraction * usableWidth
-            val activeTrackWidthDp = with(density) { (thumbCenterPx + (trackHeight.toPx() / 2f)).toDp() }
+            val currentThumbCenterPx = thumbRadiusPx + fraction * usableWidth
+            val activeTrackWidthDp = with(density) { (currentThumbCenterPx + (trackHeight.toPx() / 2f)).toDp() }
             val maxWidthDp = with(density) { widthPx.toDp() }
             val clampedActiveWidthDp = if (activeTrackWidthDp > maxWidthDp) maxWidthDp else if (activeTrackWidthDp < 0.dp) 0.dp else activeTrackWidthDp
             Box(
@@ -233,16 +233,16 @@ fun SmoothFluidSlider(
                     .background(
                         Brush.horizontalGradient(
                             listOf(
-                                activeColor.copy(alpha = 0.75f),
+                                activeColor.copy(alpha = 0.80f),
                                 activeColor
                             )
                         )
                     )
             )
 
-            // Thumb: tactile glowing floating pearl with responsive spring expansion
+            // Thumb: smooth floating pearl
             val currentThumbDiameterPx = with(density) { animatedThumbDiameter.toPx() }
-            val thumbOffset = with(density) { (thumbCenterPx - currentThumbDiameterPx / 2f).toDp() }
+            val thumbOffset = with(density) { (currentThumbCenterPx - currentThumbDiameterPx / 2f).toDp() }
             val thumbCenterFill = if (activeColor.luminance() > 0.85f) Color(0xFF1E1E1E) else Color.White
 
             Box(
@@ -252,11 +252,11 @@ fun SmoothFluidSlider(
                     .shadow(
                         elevation = animatedElevation,
                         shape = CircleShape,
-                        spotColor = activeColor.copy(alpha = 0.45f)
+                        spotColor = activeColor.copy(alpha = 0.40f)
                     )
                     .clip(CircleShape)
                     .background(thumbCenterFill)
-                    .border(2.5.dp, activeColor, CircleShape),
+                    .border(2.dp, activeColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
                 // Subtle center pip

@@ -20,14 +20,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material.icons.filled.*
+import com.example.R
 import com.example.ui.theme.LocalAccentColor
 import com.example.ui.theme.LocalVaultPalette
 import kotlinx.coroutines.delay
@@ -123,38 +127,13 @@ fun AppLockScreen(
                     .fillMaxWidth()
                     .offset(x = shakeOffset.value.dp)
             ) {
-                // Lock Icon with glowing background circle
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    accentColor.copy(alpha = 0.25f),
-                                    accentColor.copy(alpha = 0.05f),
-                                    Color.Transparent
-                                )
-                            )
-                        ),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Surface(
-                        shape = CircleShape,
-                        color = palette.cardBg.copy(alpha = 0.85f),
-                        border = BorderStroke(1.dp, accentColor.copy(alpha = 0.5f)),
-                        modifier = Modifier.size(62.dp)
-                    ) {
-                        Box(contentAlignment = Alignment.Center) {
-                            Icon(
-                                imageVector = if (isError) Icons.Outlined.ErrorOutline else Icons.Outlined.Lock,
-                                contentDescription = "App Locked",
-                                tint = if (isError) MaterialTheme.colorScheme.error else accentColor,
-                                modifier = Modifier.size(30.dp)
-                            )
-                        }
-                    }
-                }
+                // Standalone enlarged lock / error icon without circle shape underneath
+                Icon(
+                    painter = painterResource(if (isError) R.drawable.ic_lock_error else R.drawable.ic_lock_key),
+                    contentDescription = if (isError) "Incorrect Passcode" else "App Locked",
+                    tint = if (isError) MaterialTheme.colorScheme.error else accentColor,
+                    modifier = Modifier.size(64.dp)
+                )
 
                 Spacer(modifier = Modifier.height(24.dp))
 
@@ -222,6 +201,10 @@ fun AppLockScreen(
 
                 Spacer(modifier = Modifier.height(48.dp))
 
+                // Button background: #353638 in Dark theme mode, otherwise palette.cardBg
+                val isDarkTheme = palette.name != "Light"
+                val keypadButtonBg = if (isDarkTheme) Color(0xFF353638) else palette.cardBg
+
                 // Numeric Keypad Grid (1-9, empty, 0, Backspace)
                 val keypadRows = listOf(
                     listOf("1", "2", "3"),
@@ -257,15 +240,17 @@ fun AppLockScreen(
                                                 }
                                                 .testTag("keypad_del"),
                                             shape = CircleShape,
-                                            color = palette.cardBg.copy(alpha = 0.35f),
-                                            border = BorderStroke(1.dp, palette.border.copy(alpha = 0.25f))
+                                            color = keypadButtonBg
                                         ) {
-                                            Box(contentAlignment = Alignment.Center) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Icon(
-                                                    imageVector = Icons.Outlined.Backspace,
+                                                    painter = painterResource(R.drawable.ic_lock_backspace),
                                                     contentDescription = "Backspace",
                                                     tint = palette.textPrimary,
-                                                    modifier = Modifier.size(26.dp)
+                                                    modifier = Modifier.size(28.dp)
                                                 )
                                             }
                                         }
@@ -283,14 +268,25 @@ fun AppLockScreen(
                                                 }
                                                 .testTag("keypad_$item"),
                                             shape = CircleShape,
-                                            color = palette.cardBg.copy(alpha = 0.65f),
-                                            border = BorderStroke(1.dp, palette.border.copy(alpha = 0.3f))
+                                            color = keypadButtonBg
                                         ) {
-                                            Box(contentAlignment = Alignment.Center) {
+                                            Box(
+                                                modifier = Modifier.fillMaxSize(),
+                                                contentAlignment = Alignment.Center
+                                            ) {
                                                 Text(
                                                     text = item,
-                                                    style = MaterialTheme.typography.headlineMedium,
+                                                    style = MaterialTheme.typography.headlineMedium.copy(
+                                                        platformStyle = PlatformTextStyle(
+                                                            includeFontPadding = false
+                                                        ),
+                                                        lineHeightStyle = LineHeightStyle(
+                                                            alignment = LineHeightStyle.Alignment.Center,
+                                                            trim = LineHeightStyle.Trim.Both
+                                                        )
+                                                    ),
                                                     fontWeight = FontWeight.SemiBold,
+                                                    textAlign = TextAlign.Center,
                                                     fontFamily = FontFamily.Default,
                                                     color = palette.textPrimary
                                                 )
